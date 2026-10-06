@@ -18,16 +18,20 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # The second answer set sorts its package after `tests`, carries a digit and uses the
-        # newest Python, so answers that change the rendered files are exercised too.
+        # The second answer set sorts its package after `tests`, carries a digit, uses the newest
+        # Python and leaves the command-line rules out, so every answer that changes the rendered
+        # files is exercised.
         include:
           - project_name: Demo Notes
             python_version: "3.12"
+            strict_cli: "true"
           - project_name: Zeta App2
             python_version: "3.13"
+            strict_cli: "false"
     env:
       PROJECT_NAME: ${{ matrix.project_name }}
       PYTHON_VERSION: ${{ matrix.python_version }}
+      STRICT_CLI: ${{ matrix.strict_cli }}
     steps:
       - uses: actions/checkout@v7
         with:
