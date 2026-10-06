@@ -7,7 +7,10 @@ coding agents: the agent can move fast because every rule it might bend fails `m
 ## What a generated project gets
 
 - **Layers** `bootstrap → presentation | adapters → application → domain`, held by import-linter
-  contracts.
+  contracts; every application slice is listed, so a module dropped outside a slice fails.
+- **Thin command-line handlers** (optional, on by default): each `handle_<command>(args, service,
+  view)` calls one service method and hands its result to the view, with no branching, printing,
+  construction or ambient state; a command-line module without handlers fails too.
 - **Semgrep rules for what imports cannot express**: domain and application code imports only
   its own code and pure standard modules and does no direct I/O; the wall clock and the
   environment are read only where composition allows; value objects are frozen, domain services
