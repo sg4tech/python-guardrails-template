@@ -5,9 +5,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from {{ package_name }}.application.notes.command_service import NotesService
 from {{ package_name }}.bootstrap import notes
 from {{ package_name }}.bootstrap.groups import audio
-from {{ package_name }}.application.notes.command_service import NotesService
 
 
 def handle_branching(args: Any, service: Any, view: Any) -> int:
