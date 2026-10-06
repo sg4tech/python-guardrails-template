@@ -1,0 +1,18 @@
+"""The entry point wires the real adapters: a note added in one run is listed by the next."""
+
+from pathlib import Path
+
+import pytest
+
+from {{ package_name }}.bootstrap.cli import NOTES_FILE_VARIABLE, main
+
+
+def test_a_note_added_in_one_run_is_listed_by_the_next(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv(NOTES_FILE_VARIABLE, str(tmp_path / "notes.json"))
+
+    assert main(["add", "buy milk"]) == 0
+    assert main(["list"]) == 0
+
+    assert capsys.readouterr().out.splitlines()[-1].endswith("  buy milk")

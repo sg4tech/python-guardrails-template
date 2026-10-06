@@ -1,0 +1,82 @@
+# Rules for the commit-time secret and private-path scanner (make secret-scan, .githooks/pre-commit).
+# A content rule flags any line whose text matches `pattern`; a path rule flags any file whose
+# repository-relative path matches it. A line may opt out with the marker below.
+
+allow_marker = "secret-scan: allow"
+
+[[content_rules]]
+id = "api-key"
+description = "API key with an sk- prefix"
+pattern = "sk-[A-Za-z0-9_-]{20,}"
+
+[[content_rules]]
+id = "github-token"
+description = "GitHub personal, OAuth, user, server or refresh token"
+pattern = "gh[pousr]_[A-Za-z0-9]{30,}"
+
+[[content_rules]]
+id = "bearer-token"
+description = "Literal Bearer authorization token"
+pattern = "(?i)bearer\\s+[A-Za-z0-9._~+/=-]{20,}"
+
+[[content_rules]]
+id = "private-key"
+description = "PEM private key block"
+pattern = "-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----"
+
+[[content_rules]]
+id = "private-path"
+description = "Absolute path into a personal home directory"
+pattern = "(?:/Users|/home)/[A-Za-z0-9._-]+/"
+
+[[content_rules]]
+id = "aws-access-key"
+description = "AWS access key ID"
+pattern = "\\b(?:AKIA|ASIA)[0-9A-Z]{16}\\b"
+
+[[content_rules]]
+id = "slack-token"
+description = "Slack bot, app, user or refresh token"
+pattern = "\\bxox[abprs]-[A-Za-z0-9-]{10,}"
+
+[[content_rules]]
+id = "url-credentials"
+description = "URL with an embedded user name and password"
+pattern = "https?://[^\\s/:@]+:[^\\s/@]+@[^\\s/]+"
+
+[[content_rules]]
+id = "google-client-secret"
+description = "Google OAuth client secret"
+pattern = "GOCSPX-[A-Za-z0-9_-]{20,}"
+
+[[content_rules]]
+id = "google-oauth-token"
+description = "Google OAuth access or refresh token"
+pattern = "ya29\\.[A-Za-z0-9_-]{20,}|1//0[A-Za-z0-9_-]{20,}"
+
+[[path_rules]]
+id = "log-file"
+description = "Log file"
+pattern = "\\.log$"
+
+[[path_rules]]
+id = "database-file"
+description = "Local database file"
+pattern = "\\.(?:sqlite3?|db)$"
+
+# Local secrets live in these files; .gitignore excludes them, and these rules also catch a forced
+# add. `.env.example` is the committed template and stays allowed.
+[[path_rules]]
+id = "dotenv-file"
+description = "Environment file with local credentials"
+pattern = "(?:^|/)\\.env(?:\\.(?!example$)[^/]+)?$"
+
+[[path_rules]]
+id = "runtime-directory"
+description = "Local runtime state such as tokens, sessions and data"
+pattern = "(?:^|/)\\.runtime/"
+
+[[path_rules]]
+id = "credential-file"
+description = "OAuth token, session or client-secret file"
+pattern = "(?:^|/)(?:token|oauth-session|client_secret[^/]*)\\.json$"

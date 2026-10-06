@@ -1,0 +1,53 @@
+"""The test tree mirrors the source tree, so a test is found where the code it covers lives."""
+
+from pathlib import Path
+
+import pytest
+
+TESTS_ROOT = Path(__file__).parents[1]
+SOURCE_ROOT = TESTS_ROOT.parent / "src" / "{{ package_name }}"
+# Directories that have no source counterpart: the architecture checks, Semgrep fixtures and
+# shared test helpers. Every other directory must exist in the source tree.
+NON_MIRRORED = {"architecture", "fixtures", "support"}
+TOP_LEVEL_FILES = {"__init__.py", "conftest.py"}
+# These are not importable packages: the checks run as plain modules and the fixtures are inputs.
+NOT_PACKAGES = {"architecture", "fixtures"}
+
+
+def _directories(root: Path) -> list[Path]:
+    return sorted(
+        path
+        for path in root.rglob("*")
+        if path.is_dir() and "__pycache__" not in path.parts and path.name != "__pycache__"
+    )
+
+
+def test_the_top_level_holds_only_mirrored_directories_and_known_files() -> None:
+    entries = {path.name for path in TESTS_ROOT.iterdir() if path.name != "__pycache__"}
+
+    mirrored = {name for name in entries if (SOURCE_ROOT / name).is_dir()}
+    assert entries - mirrored - NON_MIRRORED - TOP_LEVEL_FILES == set()
+
+
+@pytest.mark.parametrize(
+    "directory",
+    [
+        path
+        for path in _directories(TESTS_ROOT)
+        if path.relative_to(TESTS_ROOT).parts[0] not in NON_MIRRORED
+    ],
+    ids=lambda path: str(path.relative_to(TESTS_ROOT)),
+)
+def test_every_test_directory_has_a_source_counterpart(directory: Path) -> None:
+    assert (SOURCE_ROOT / directory.relative_to(TESTS_ROOT)).is_dir()
+
+
+def test_every_test_directory_is_a_package() -> None:
+    missing = [
+        str(path.relative_to(TESTS_ROOT))
+        for path in _directories(TESTS_ROOT)
+        if path.relative_to(TESTS_ROOT).parts[0] not in NOT_PACKAGES
+        and not (path / "__init__.py").is_file()
+    ]
+
+    assert missing == []

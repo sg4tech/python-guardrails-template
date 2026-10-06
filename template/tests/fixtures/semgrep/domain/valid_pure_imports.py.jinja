@@ -1,0 +1,16 @@
+"""Fixture importing only the code's own modules and pure standard modules into the domain.
+
+from the platform's reply, a line of prose that starts like an import is no import
+import the catalogue first, says another
+"""
+
+# ruff: noqa: F401, I001
+import hmac
+import re
+from collections.abc import Mapping
+from dataclasses import dataclass
+from urllib.parse import urlsplit
+
+from {{ package_name }}.domain.value_objects import publication
+
+from . import entities

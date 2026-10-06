@@ -1,0 +1,15 @@
+FROM python:{{ python_version }}-slim
+
+WORKDIR /workspace
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+
+COPY --from=ghcr.io/astral-sh/uv:0.12.21 /uv /bin/uv
+
+ENV UV_SYSTEM_PYTHON=1 \
+    UV_NO_CACHE=1
+
+# The pip the base image ships can carry known vulnerabilities, which the dependency audit
+# rejects; it is upgraded to its latest release like the project's own dependencies.
+RUN uv pip install --upgrade-package pip --editable '.[dev]'

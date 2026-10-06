@@ -1,0 +1,405 @@
+rules:
+  - id: guardrails.core-direct-io
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Application and domain code must delegate direct I/O, including database access, files and
+      processes, to a port that an adapter implements.
+    paths:
+      include:
+        - "**/application/**/*.py"
+        - "**/domain/**/*.py"
+      exclude:
+        # The mirrored test tree reuses the source directory names; only the fixtures, which are
+        # meant to be flagged, stay in scope.
+        - "/tests/adapters/**"
+        - "/tests/application/**"
+        - "/tests/bootstrap/**"
+        - "/tests/domain/**"
+        - "/tests/presentation/**"
+    pattern-either:
+      - pattern: sqlite3.connect(...)
+      - pattern: $PATH.read_text(...)
+      - pattern: $PATH.write_text(...)
+      - pattern: $PATH.read_bytes(...)
+      - pattern: $PATH.write_bytes(...)
+      - pattern: $PATH.is_file(...)
+      - pattern: $PATH.is_dir(...)
+      - pattern: $PATH.exists(...)
+      - pattern: $PATH.resolve(...)
+      - pattern: $PATH.samefile(...)
+      - pattern: $PATH.stat(...)
+      - pattern: $PATH.iterdir(...)
+      - pattern: $PATH.glob(...)
+      - pattern: $PATH.rglob(...)
+      - pattern: $PATH.mkdir(...)
+      - pattern: $PATH.unlink(...)
+      - pattern: $PATH.rename(...)
+      - pattern: open(...)
+      - pattern: subprocess.run(...)
+      - pattern: subprocess.Popen(...)
+
+  - id: guardrails.inner-layer-imports
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Domain and application code imports only its own code and the pure parts of the standard
+      library listed here, nothing that reaches the outside world: no network, files, processes,
+      environment, clock, randomness, logging or third-party library. A module that is pure joins
+      the list; anything else is an adapter's work, reached through a port.
+    paths:
+      include:
+        - "**/application/**/*.py"
+        - "**/domain/**/*.py"
+      exclude:
+        # The mirrored test tree reuses the source directory names; only the fixtures, which are
+        # meant to be flagged, stay in scope.
+        - "/tests/adapters/**"
+        - "/tests/application/**"
+        - "/tests/bootstrap/**"
+        - "/tests/domain/**"
+        - "/tests/presentation/**"
+    # Matched on the syntax tree, so every form of import counts (a list of names, a statement after
+    # `;`, a continued line) and prose in a docstring never does. Relative imports are the code's own.
+    # `urllib.parse` is imported as `from urllib.parse import ...`: `import urllib.parse` names `urllib`.
+    patterns:
+      - pattern-either:
+          - pattern: import $MODULE
+          - pattern: import $MODULE as $ALIAS
+          - pattern: from $MODULE import $NAME
+          - pattern: from $MODULE import $NAME as $ALIAS
+          - pattern: from $MODULE import *
+      - metavariable-regex:
+          metavariable: $MODULE
+          regex: ^(?!\.|(?:{{ package_name }}|abc|calendar|collections|contextlib|dataclasses|datetime|enum|hashlib|hmac|math|pathlib|re|statistics|typing|urllib\.parse)(?:[.\s]|$))
+
+  - id: guardrails.core-no-raw-payload-contract
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Application and domain contracts must use typed values rather than raw mappings or dictionaries.
+    paths:
+      include:
+        - "**/application/**/*.py"
+        - "**/domain/**/*.py"
+      exclude:
+        # The mirrored test tree reuses the source directory names; only the fixtures, which are
+        # meant to be flagged, stay in scope.
+        - "/tests/adapters/**"
+        - "/tests/application/**"
+        - "/tests/bootstrap/**"
+        - "/tests/domain/**"
+        - "/tests/presentation/**"
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def $FUNCTION(..., $PAYLOAD: Mapping[...], ...) -> $RETURN:
+                  ...
+          - pattern: |
+              def $FUNCTION(..., $PAYLOAD: collections.abc.Mapping[...], ...) -> $RETURN:
+                  ...
+          - pattern: |
+              def $FUNCTION(..., $PAYLOAD: typing.Mapping[...], ...) -> $RETURN:
+                  ...
+          - pattern: |
+              def $FUNCTION(..., $PAYLOAD: dict[...], ...) -> $RETURN:
+                  ...
+          - pattern: |
+              def $FUNCTION(...) -> Mapping[...]:
+                  ...
+          - pattern: |
+              def $FUNCTION(...) -> collections.abc.Mapping[...]:
+                  ...
+          - pattern: |
+              def $FUNCTION(...) -> typing.Mapping[...]:
+                  ...
+          - pattern: |
+              def $FUNCTION(...) -> dict[...]:
+                  ...
+      - metavariable-regex:
+          metavariable: $FUNCTION
+          regex: "^[^_].*$"
+
+  - id: guardrails.wall-clock-outside-clock-adapter
+    languages: [python]
+    severity: ERROR
+    message: >-
+      The wall clock is read only by the clock adapter; everything else receives the time from
+      composition, so tests can fix it. Measuring a duration with a monotonic clock is fine.
+    paths:
+      include:
+        - "**/{{ package_name }}/**/*.py"
+      exclude:
+        - "**/{{ package_name }}/adapters/system/clock.py"
+    pattern-either:
+      - pattern: datetime.datetime.now(...)
+      - pattern: datetime.datetime.utcnow(...)
+      - pattern: datetime.datetime.today(...)
+      - pattern: datetime.date.today(...)
+      - pattern: time.time(...)
+      - pattern: time.time_ns(...)
+
+  - id: guardrails.field-by-field-copy
+    languages: [python]
+    severity: ERROR
+    message: >-
+      $TYPE is built by copying fields of $SRC one by one, so the two describe the same thing and a
+      new field must be added to both and to this copy. Keep the $SRC whole in it instead; copying
+      is right only where a boundary changes the format.
+    paths:
+      include:
+        - "**/{{ package_name }}/**/*.py"
+      exclude:
+        # Parsed command-line arguments are untyped; turning them into a typed value is the
+        # boundary of the command line.
+        - "**/{{ package_name }}/**/presentation/cli/**"
+        # A mapper turns an external DTO into domain values: the anti-corruption layer.
+        - "**/{{ package_name }}/**/adapters/**/mapper/**"
+    patterns:
+      - pattern: $TYPE(..., $A=$SRC.$A, ..., $B=$SRC.$B, ..., $C=$SRC.$C, ...)
+      # Building an object, or replacing its fields; a call that only passes values on is not.
+      - metavariable-regex:
+          metavariable: $TYPE
+          regex: (^|\.)([A-Z]\w*|replace)$
+
+  - id: guardrails.environment-read-outside-composition
+    languages: [python]
+    severity: ERROR
+    message: >-
+      The environment is read only by composition, by an adapter's configuration module and by
+      the shared defaults; everything else receives its settings, so they live in one place.
+    paths:
+      include:
+        - "**/{{ package_name }}/**/*.py"
+      exclude:
+        - "**/{{ package_name }}/bootstrap/**"
+        - "**/{{ package_name }}/**/adapters/**/configuration.py"
+        - "**/{{ package_name }}/presentation/defaults.py"
+    pattern-either:
+      - pattern: os.environ
+      - pattern: os.getenv(...)
+      - pattern-regex: >-
+          (?m)^\s*from\s+os\s+import\s+[^\n]*\b(?:environ|getenv)\b
+
+  # The composition root only constructs and wires objects. Deciding, looping, recovering and
+  # declaring types belong to the layers it wires. The patterns cover the common shapes of each
+  # construct, not every combination; those and logic moved into a called helper elsewhere are
+  # left to the import contracts and review.
+  - id: guardrails.composition-root-logic
+    languages: [python]
+    severity: ERROR
+    message: >-
+      The composition root must only construct and wire objects; move branching, loops, error
+      handling and type definitions into the layer that owns them.
+    paths:
+      include:
+        - "**/{{ package_name }}/bootstrap/**/*.py"
+    pattern-either:
+      - pattern: |
+          if $CONDITION:
+              ...
+      - pattern: |
+          for $ITEM in $ITERABLE:
+              ...
+      - pattern: |
+          while $CONDITION:
+              ...
+      - pattern: |
+          try:
+              ...
+          except ...:
+              ...
+      - pattern: |
+          try:
+              ...
+          except ...:
+              ...
+          else:
+              ...
+      - pattern: |
+          try:
+              ...
+          except ...:
+              ...
+          else:
+              ...
+          finally:
+              ...
+      - pattern: |
+          try:
+              ...
+          finally:
+              ...
+      - pattern: |
+          match $SUBJECT:
+              case $CASE:
+                  ...
+      - pattern: |
+          with $CONTEXT:
+              ...
+      - pattern: |
+          with $CONTEXT as $NAME:
+              ...
+      - pattern: $THEN if $CONDITION else $OTHERWISE
+      - pattern: "[$ELEMENT for $ITEM in $ITERABLE]"
+      - pattern: "{$ELEMENT for $ITEM in $ITERABLE}"
+      - pattern: "{$KEY: $VALUE for $ITEM in $ITERABLE}"
+      - pattern: ($ELEMENT for $ITEM in $ITERABLE)
+      - pattern: "[$ELEMENT for $ITEM in $ITERABLE if $CONDITION]"
+      - pattern: "{$ELEMENT for $ITEM in $ITERABLE if $CONDITION}"
+      - pattern: "{$KEY: $VALUE for $ITEM in $ITERABLE if $CONDITION}"
+      - pattern: ($ELEMENT for $ITEM in $ITERABLE if $CONDITION)
+      - pattern: "[$ELEMENT for $ITEM in $ITERABLE if $CONDITION if $OTHER_CONDITION]"
+      - pattern: "[$ELEMENT for $ITEM in $ITERABLE for $INNER in $INNER_ITERABLE]"
+      - pattern: "{$ELEMENT for $ITEM in $ITERABLE for $INNER in $INNER_ITERABLE}"
+      - pattern: "{$KEY: $VALUE for $ITEM in $ITERABLE for $INNER in $INNER_ITERABLE}"
+      - pattern: ($ELEMENT for $ITEM in $ITERABLE for $INNER in $INNER_ITERABLE)
+      # Semgrep's structural `:=` pattern also matches plain assignments, so the operator is matched
+      # as text; it also flags `:=` inside a string or comment, which composition does not need.
+      - pattern-regex: ":="
+      - pattern: $LEFT and $RIGHT
+      - pattern: $LEFT or $RIGHT
+      - pattern: assert $CONDITION
+      - pattern: raise
+      - pattern: raise $ERROR
+      - pattern: yield
+      - pattern: yield $VALUE
+      - pattern: |
+          class $CLASS:
+              ...
+      - pattern: |
+          class $CLASS(...):
+              ...
+
+  - id: guardrails.protocol-any-return
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Protocol methods must return a concrete boundary type instead of Any.
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              class $PROTOCOL(..., typing.Protocol, ...):
+                  ...
+          - pattern-inside: |
+              class $PROTOCOL(..., typing.Protocol[...], ...):
+                  ...
+      - pattern: |
+          def $METHOD(...) -> $RETURN:
+              ...
+      # The whole return type is Any, optionally quoted or unioned with None.
+      - metavariable-regex:
+          metavariable: $RETURN
+          regex: >-
+            ^["']?(?:None\s*\|\s*)?(?:typing\.)?Any(?:\s*\|\s*None)?["']?$
+
+  - id: guardrails.domain-value-object-frozen
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A value object is immutable: declare it as a frozen dataclass.
+    paths:
+      include:
+        - "**/domain/value_objects/**/*.py"
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @dataclass
+              class $CLASS:
+                  ...
+          - pattern: |
+              @dataclass(...)
+              class $CLASS:
+                  ...
+          - pattern: |
+              @dataclasses.dataclass
+              class $CLASS:
+                  ...
+          - pattern: |
+              @dataclasses.dataclass(...)
+              class $CLASS:
+                  ...
+      - pattern-not: |
+          @dataclass(..., frozen=True, ...)
+          class $CLASS:
+              ...
+      - pattern-not: |
+          @dataclasses.dataclass(..., frozen=True, ...)
+          class $CLASS:
+              ...
+
+  - id: guardrails.domain-value-object-mutable-field
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A value object must not hold a mutable collection; use a tuple or frozenset.
+    paths:
+      include:
+        - "**/domain/value_objects/**/*.py"
+    patterns:
+      - pattern-inside: |
+          class $CLASS:
+              ...
+      - pattern-not-inside: |
+          def $METHOD(...):
+              ...
+      - pattern-either:
+          - pattern: "$FIELD: list[...]"
+          - pattern: "$FIELD: dict[...]"
+          - pattern: "$FIELD: set[...]"
+
+  - id: guardrails.domain-service-stateless
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A domain service keeps no state between calls: no global rebinding and no attribute
+      assignment outside the constructor.
+    paths:
+      include:
+        - "**/domain/services/**/*.py"
+    patterns:
+      - pattern-either:
+          - pattern: global $NAME
+          - pattern: self.$ATTRIBUTE = $VALUE
+      - pattern-not-inside: |
+          def __init__(...):
+              ...
+
+  - id: guardrails.domain-entity-equality
+    languages: [python]
+    severity: ERROR
+    message: >-
+      An entity is the same entity when its identity matches: define __eq__ on identity.
+    paths:
+      include:
+        - "**/domain/entities/**/*.py"
+    patterns:
+      - pattern: |
+          class $CLASS:
+              ...
+      - pattern-not: |
+          class $CLASS:
+              ...
+              def __eq__(...):
+                  ...
+              ...
+
+  - id: guardrails.domain-entity-hash
+    languages: [python]
+    severity: ERROR
+    message: >-
+      An entity that defines __eq__ on identity must define a matching __hash__, or it becomes
+      unhashable.
+    paths:
+      include:
+        - "**/domain/entities/**/*.py"
+    patterns:
+      - pattern: |
+          class $CLASS:
+              ...
+      - pattern-not: |
+          class $CLASS:
+              ...
+              def __hash__(...):
+                  ...
+              ...

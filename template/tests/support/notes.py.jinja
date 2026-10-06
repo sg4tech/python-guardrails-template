@@ -1,0 +1,26 @@
+"""Stand-ins for the notes ports, shared by the tests of the layers that use them."""
+
+from datetime import UTC, datetime
+
+from {{ package_name }}.domain.value_objects.note import Note
+
+MOMENT = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+
+
+class FixedClock:
+    def __init__(self, moment: datetime = MOMENT) -> None:
+        self.moment = moment
+
+    def now(self) -> datetime:
+        return self.moment
+
+
+class InMemoryNoteStore:
+    def __init__(self) -> None:
+        self.notes: list[Note] = []
+
+    def append(self, note: Note) -> None:
+        self.notes.append(note)
+
+    def list_notes(self) -> tuple[Note, ...]:
+        return tuple(self.notes)

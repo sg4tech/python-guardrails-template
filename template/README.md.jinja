@@ -1,0 +1,24 @@
+# {{ project_name }}
+
+{{ description }}
+
+## Usage
+
+```sh
+docker compose run --rm app python -m {{ package_name }} add "buy milk"
+docker compose run --rm app python -m {{ package_name }} list
+```
+
+The notes command is a demonstration slice that shows every layer working together; replace it
+with the project's own code.
+
+## Development
+
+All tools run in Docker. `make verify` runs every check; CI runs the same command.
+
+```sh
+make install-hooks   # block commits with secrets, personal paths, databases or logs
+make verify          # lint, types, tests, coverage, architecture and security checks
+```
+
+See `AGENTS.md` for the rules the checks enforce.

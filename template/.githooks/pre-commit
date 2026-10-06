@@ -1,0 +1,4 @@
+#!/bin/sh
+# Blocks commits that add secrets, private paths, local data or log files. Enable with: make install-hooks
+git diff --cached --name-only --diff-filter=ACMR -z \
+  | docker compose run --rm -T secret-scan

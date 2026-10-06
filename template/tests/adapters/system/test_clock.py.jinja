@@ -1,0 +1,14 @@
+"""The system clock reads the current time, in UTC."""
+
+from datetime import UTC, datetime
+
+from {{ package_name }}.adapters.system.clock import SystemClock
+
+
+def test_the_clock_reads_the_current_utc_time() -> None:
+    before = datetime.now(UTC)
+
+    moment = SystemClock().now()
+
+    assert before <= moment <= datetime.now(UTC)
+    assert moment.tzinfo is UTC

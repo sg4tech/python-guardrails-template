@@ -1,0 +1,89 @@
+name: {{ project_slug }}
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: {{ project_slug }}:local
+  working_dir: /workspace
+  init: true
+  environment:
+    PYTHONDONTWRITEBYTECODE: "1"
+    PYTHONUNBUFFERED: "1"
+  volumes:
+    - type: bind
+      source: .
+      target: /workspace
+
+services:
+  app:
+    <<: *app
+    command: ["python", "-m", "{{ package_name }}", "--help"]
+
+  test:
+    <<: *app
+    command: ["python", "-m", "pytest"]
+
+  lint:
+    <<: *app
+    command: ["python", "-m", "ruff", "check", "."]
+
+  format-check:
+    <<: *app
+    command: ["python", "-m", "ruff", "format", "--check", "."]
+
+  typecheck:
+    <<: *app
+    command: ["python", "-m", "mypy"]
+
+  security:
+    <<: *app
+    command: ["python", "-m", "bandit", "-q", "-r", "src"]
+
+  complexity:
+    <<: *app
+    command: ["xenon", "--max-absolute", "B", "--max-modules", "A", "--max-average", "A", "src"]
+
+  annotation-complexity:
+    <<: *app
+    # Only the annotation checks: ruff owns every other lint rule.
+    command: ["python", "-m", "flake8", "--select", "TAE", "src", "tests"]
+
+  cognitive-complexity:
+    <<: *app
+    command: ["complexipy"]
+
+  secret-scan:
+    <<: *app
+    command: ["python", "-m", "{{ package_name }}.devtools.secret_scan"]
+
+  architecture:
+    <<: *app
+    command:
+      [
+        "sh",
+        "-c",
+        "lint-imports && find tests -type f -name '*.py' ! -path 'tests/fixtures/semgrep/*' -print0 | xargs -0 semgrep scan --error --strict --no-git-ignore --metrics=off --disable-version-check --config config/semgrep/layer-boundaries.yml src",
+      ]
+
+  dependencies:
+    <<: *app
+    command: ["deptry", "src"]
+
+  copy-paste:
+    <<: *app
+    command: ["python", "-m", "pylint", "src", "tests"]
+
+  dead-code:
+    <<: *app
+    command: ["vulture"]
+
+  coverage:
+    <<: *app
+    command: ["python", "-m", "pytest", "--cov={{ package_name }}", "--cov-report=term-missing"]
+
+  # Audits the packages installed in the image against the public vulnerability database, so
+  # it needs the network and its verdict can change when a new advisory is published.
+  dependency-audit:
+    <<: *app
+    command: ["python", "-m", "pip_audit", "--skip-editable", "--progress-spinner", "off"]

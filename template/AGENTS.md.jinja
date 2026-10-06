@@ -1,0 +1,103 @@
+# {{ project_name }}
+
+{{ description }}
+
+## Runtime Environment
+
+Run all project tools and tests through Docker (`make verify`, `docker compose run --rm <service>`).
+Do not rely on host-installed project dependencies.
+
+## Quality Requirements
+
+`make verify` is the gate: a change is done only when it passes. Never weaken a check to make it
+pass; change the code, or propose options.
+
+Every behaviour change comes with unit tests, and unit-test coverage stays at or above the limit
+in `pyproject.toml`. When fixing a bug, first write a test that fails on the current code, then fix
+it.
+
+The copy-paste detector runs in error mode: detected duplication fails verification.
+
+The declared dependencies must match what the code imports: a missing, unused, only transitively
+installed, or development-only dependency used by the product fails verification. A dependency
+that runs only as a program is listed with its reason beside the checker's configuration.
+
+Type annotations stay shallow and short: verification rejects a deeply nested or long annotation.
+Give such a shape a name instead — a dataclass when its parts mean different things, a `type`
+alias when the shape itself is the concept — rather than raising the limit.
+
+Verification limits both kinds of complexity: how many paths a function has (cyclomatic, in
+`src`) and how hard it is to follow (cognitive, in `src` and `tests`). A function over either
+limit is split rather than the limit raised; the limits live in `compose.yaml` and
+`pyproject.toml`.
+
+Installed dependencies with a known vulnerability fail verification. Upgrade the dependency; an
+advisory that cannot be fixed yet is ignored only with its reason written beside the ignore.
+
+The dead-code detector scans product code only, so code that nothing but the tests uses counts as
+dead and fails verification. A name used only from outside Python, such as a template, is listed
+in a whitelist file under the reason it is used; a hook a library calls by convention goes into
+`[tool.vulture]`.
+
+Commits that add secrets, personal paths, local databases or log files are blocked by the secret
+scanner (`config/security-rules.toml`); enable the hook once with `make install-hooks`.
+
+## Code Layout
+
+Code is layered `bootstrap → presentation | adapters → application → domain`: inner layers never
+import outer ones, and presentation and adapters never import each other. Import-linter contracts
+in `pyproject.toml` enforce this; Semgrep rules in `config/semgrep/` enforce what imports cannot
+express. Each rule is tested against fixtures in `tests/fixtures/semgrep/` that must and must not
+be flagged.
+
+- **Domain** is split by kind of object: `entities` (equal when their identity is equal),
+  `value_objects` (frozen, no mutable collections) and `services` (pure, no state between calls).
+- **Application** is split into feature slices. A slice holds its use cases and `ports.py`.
+  Anything that touches the outside world, including the filesystem, is reached through a port
+  declared in the slice. A new capability adds a slice rather than growing shared modules.
+- Domain and application code is pure: it imports only its own code and an allow-list of pure
+  standard modules, nothing that reaches the network, files, processes, the environment, the clock
+  or randomness, and no third-party library. A module that is pure joins the allow-list in the
+  Semgrep rule; anything else is an adapter's work reached through a port.
+- **Adapters** implement the ports and are the only code that talks to the database, the network,
+  the clock or the disk. **Presentation** holds the delivery channels, such as the command line.
+- `src/{{ package_name }}/bootstrap/` is the single composition root: the only place where concrete
+  objects are constructed and wired together, and it contains no logic.
+- The wall clock is read only by `adapters/system/clock.py`; everything else receives the time, so
+  tests can fix it. The environment is read only by `bootstrap/`, an adapter's `configuration.py`
+  and `presentation/defaults.py`; everything else receives its settings.
+- One set of facts has one class. When an object is made from another that already holds those
+  facts, it holds that object whole instead of copying its fields one by one; copying is right
+  only at a boundary that changes the format.
+- Functions that return `dict[str, Any]` across a module boundary become typed dataclasses.
+
+Tests mirror the source tree: a test lives in the directory that matches the module it covers,
+and helpers shared across areas live in `tests/support`. An architecture test rejects a test
+directory that has no source counterpart.
+
+A package does not grow into a long flat list of modules: past the limit in
+`config/package-size.toml` it is split into subpackages by concept.
+
+## Boy Scout Rule
+
+Leave every piece of code you touch cleaner than you found it. When a change passes through code
+with a small, safe design problem — a duplicated rule, a misplaced responsibility, a misleading
+name — fix it in the same change, behaviour-preserving and covered by tests. A larger
+restructuring goes into its own change.
+
+When a change does not fit the structure it meets, change the structure rather than work around
+it. A special case, a second helper beside one that already exists, a copied block, or a rule
+weakened to pass is a workaround, not a substitute for the refactoring it avoids.
+
+## Git Workflow
+
+- Start every change from a feature branch created from the current `{{ default_branch }}`.
+- Merge the latest `origin/{{ default_branch }}` into the branch (`git merge`, never rebase) and
+  re-run `make verify` before opening a pull request.
+- Never commit or push directly to `{{ default_branch }}`.
+
+## Template
+
+This project was generated from a Copier template; `.copier-answers.yml` records where from. Pull
+the template's later changes with `copier update`, and keep project-specific changes in the
+project so the update can merge them.

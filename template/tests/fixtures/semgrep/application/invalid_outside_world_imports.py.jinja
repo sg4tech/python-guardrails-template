@@ -1,0 +1,30 @@
+"""Fixture importing what reaches the outside world, or a library, into application code."""
+
+# ruff: noqa: E401, E402, E701, E702, F401, I001, PLC0415, UP035
+import os
+import json as decoded
+from secrets import token_urlsafe
+import time
+import logging
+from pydantic import BaseModel
+from sqlalchemy import select
+import {{ package_name }}x  # type: ignore[import-not-found]
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy
+
+
+def measure() -> None:
+    import librosa
+
+
+import collections.abc, subprocess
+import re as regex, socket
+
+counted = 1; import shutil  # fmt: skip
+import requests
+from requests import Session
+import typing_extensions
+from typing_extensions import Self
+from urllib import parse

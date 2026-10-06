@@ -1,0 +1,15 @@
+"""Listing returns the stored notes in the order they were written."""
+
+from {{ package_name }}.application.notes.list_notes import ListNotes
+from {{ package_name }}.domain.value_objects.note import Note
+
+from tests.support.notes import MOMENT, InMemoryNoteStore
+
+
+def test_notes_are_listed_in_the_order_they_were_written() -> None:
+    store = InMemoryNoteStore()
+    first, second = Note("first", MOMENT), Note("second", MOMENT)
+    store.append(first)
+    store.append(second)
+
+    assert ListNotes(store).execute() == (first, second)

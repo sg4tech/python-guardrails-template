@@ -1,0 +1,21 @@
+"""How notes are shown on the command line."""
+
+from typing import TextIO
+
+from {{ package_name }}.domain.value_objects.note import Note
+
+
+class NoteView:
+    def __init__(self, output: TextIO, errors: TextIO) -> None:
+        self._output = output
+        self._errors = errors
+
+    def show_added(self, note: Note) -> None:
+        print(f"added: {note.text}", file=self._output)
+
+    def show_notes(self, notes: tuple[Note, ...]) -> None:
+        for note in notes:
+            print(f"{note.written_at.isoformat()}  {note.text}", file=self._output)
+
+    def show_error(self, message: str) -> None:
+        print(f"error: {message}", file=self._errors)

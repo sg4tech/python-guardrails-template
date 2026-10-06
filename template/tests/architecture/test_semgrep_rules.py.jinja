@@ -1,0 +1,268 @@
+"""Regression tests for the project's Semgrep architecture rules."""
+
+import json
+import subprocess
+from collections.abc import Callable
+from pathlib import Path
+from typing import cast
+
+import pytest
+
+# Every test here waits on Semgrep's start-up, which a busy machine stretches past the timeout for
+# plain unit tests; the shared scan's set-up also counts against the first test that asks for it,
+# so one slow start would fail the whole module. This budget still stops a hung Semgrep.
+SEMGREP_RUN_SECONDS = 30
+pytestmark = pytest.mark.timeout(SEMGREP_RUN_SECONDS)
+
+Findings = list[dict[str, object]]
+
+REPOSITORY_ROOT = Path(__file__).parents[2]
+FIXTURE_ROOT = REPOSITORY_ROOT / "tests/fixtures/semgrep"
+PACKAGE_FIXTURES = FIXTURE_ROOT / "{{ package_name }}"
+DOMAIN_FIXTURES = FIXTURE_ROOT / "domain"
+RULE_PREFIX = "config.semgrep.guardrails."
+# Semgrep's documented exit code for unparsable target code under --strict.
+SYNTAX_ERROR_EXIT_CODE = 3
+# Flags the tests share with the architecture check, so both scan files the same way.
+SHARED_SCAN_FLAGS = ("--strict", "--no-git-ignore", "--metrics=off", "--disable-version-check")
+
+
+def _run_semgrep(
+    paths: list[Path], cwd: Path = REPOSITORY_ROOT
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            "semgrep",
+            "scan",
+            "--quiet",
+            "--json",
+            *SHARED_SCAN_FLAGS,
+            "--config",
+            str(REPOSITORY_ROOT / "config/semgrep/layer-boundaries.yml"),
+            *map(str, paths),
+        ],
+        check=False,
+        capture_output=True,
+        cwd=cwd,
+        text=True,
+    )
+
+
+def _scan(paths: list[Path]) -> Findings:
+    completed = _run_semgrep(paths)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    report = cast("dict[str, object]", json.loads(completed.stdout))
+    return cast("Findings", report["results"])
+
+
+ScanFixtures = Callable[[list[Path]], Findings]
+# Every target the rule tests inspect; scanned together because Semgrep's start-up dominates.
+SCANNED_TARGETS = tuple(sorted(FIXTURE_ROOT.rglob("*.py")))
+
+
+@pytest.fixture(scope="module")
+def scan() -> ScanFixtures:
+    """Scan every target once; each call returns the findings for the requested files."""
+    findings_by_path: dict[Path, Findings] = {path: [] for path in SCANNED_TARGETS}
+    for finding in _scan(list(SCANNED_TARGETS)):
+        findings_by_path[Path(cast("str", finding["path"]))].append(finding)
+
+    def findings_for(paths: list[Path]) -> Findings:
+        return [finding for path in paths for finding in findings_by_path[path]]
+
+    return findings_for
+
+
+def _rule(finding: dict[str, object]) -> str:
+    return cast("str", finding["check_id"]).removeprefix(RULE_PREFIX)
+
+
+def _lines_of(findings: Findings, rule: str) -> set[int]:
+    return {
+        cast("dict[str, int]", finding["start"])["line"]
+        for finding in findings
+        if _rule(finding) == rule
+    }
+
+
+def test_rules_apply_inside_pep695_generic_definitions(scan: ScanFixtures) -> None:
+    findings = scan([FIXTURE_ROOT / "application/invalid_generic_direct_io.py"])
+
+    assert _lines_of(findings, "core-direct-io") == {10, 16}
+
+
+def test_partially_parsed_file_fails_the_scan(tmp_path: Path) -> None:
+    unparsable = tmp_path / "application/unparsable.py"
+    unparsable.parent.mkdir()
+    unparsable.write_text('open("catalogue.txt")\nvalue = = 1\n', encoding="utf-8")
+
+    # Rule path filters only match targets inside the scan's working directory.
+    completed = _run_semgrep([unparsable.relative_to(tmp_path)], cwd=tmp_path)
+
+    assert completed.returncode == SYNTAX_ERROR_EXIT_CODE
+    errors = cast("list[dict[str, object]]", json.loads(completed.stdout)["errors"])
+    assert [cast("list[str]", error["type"])[0] for error in errors] == ["PartialParsing"]
+
+
+def test_architecture_check_scans_like_the_tests() -> None:
+    compose = (REPOSITORY_ROOT / "compose.yaml").read_text(encoding="utf-8")
+    scan_commands = [line for line in compose.splitlines() if "semgrep scan" in line]
+
+    assert len(scan_commands) == 1, scan_commands
+    assert set(SHARED_SCAN_FLAGS) <= set(scan_commands[0].split())
+
+
+@pytest.mark.parametrize(
+    ("fixture", "rule", "violating_lines"),
+    (
+        ("application/invalid_direct_io.py", "core-direct-io", {10, 11, 12, 13, 14, 15}),
+        ("application/invalid_direct_io.py", "inner-layer-imports", {3, 4}),
+        ("domain/invalid_direct_io.py", "core-direct-io", {5}),
+        ("application/invalid_external_contract.py", "inner-layer-imports", {7}),
+        (
+            "application/invalid_external_contract.py",
+            "core-no-raw-payload-contract",
+            {16, 21, 26, 31, 36, 41},
+        ),
+        ("application/valid_private_mapping.py", "core-no-raw-payload-contract", set()),
+        ("application/valid_use_case.py", "core-direct-io", set()),
+        ("adapters/valid_dto.py", "inner-layer-imports", set()),
+        ("application/invalid_filesystem_probe.py", "core-direct-io", {7, 8, 9, 10, 11, 12}),
+        ("application/valid_path_values.py", "core-direct-io", set()),
+    ),
+)
+def test_inner_layers_reach_the_outside_world_only_through_ports(
+    scan: ScanFixtures, fixture: str, rule: str, violating_lines: set[int]
+) -> None:
+    assert _lines_of(scan([FIXTURE_ROOT / fixture]), rule) == violating_lines
+
+
+@pytest.mark.parametrize(
+    ("fixture", "violating_lines"),
+    (
+        ("application/invalid_urllib_io.py", {4, 5, 6, 7, 8, 9, 13}),
+        ("domain/invalid_urllib_request.py", {4}),
+        ("application/valid_urllib_parse.py", set()),
+        (
+            "application/invalid_outside_world_imports.py",
+            {4, 5, 6, 7, 8, 9, 10, 11, 15, 19, 22, 23, 25, 26, 27, 28, 29, 30},
+        ),
+        ("domain/valid_pure_imports.py", set()),
+    ),
+)
+def test_the_inner_layers_import_only_their_own_code_and_pure_standard_modules(
+    scan: ScanFixtures, fixture: str, violating_lines: set[int]
+) -> None:
+    assert _lines_of(scan([FIXTURE_ROOT / fixture]), "inner-layer-imports") == violating_lines
+
+
+@pytest.mark.parametrize(
+    ("fixture", "violating_lines"),
+    (
+        ("invalid_any_return.py", {10, 14, 18, 22, 26, 30, 34, 38}),
+        ("valid_any_return.py", set()),
+    ),
+)
+def test_protocol_methods_must_not_return_any(
+    scan: ScanFixtures, fixture: str, violating_lines: set[int]
+) -> None:
+    findings = scan([FIXTURE_ROOT / "protocols" / fixture])
+
+    assert _lines_of(findings, "protocol-any-return") == violating_lines
+
+
+@pytest.mark.parametrize(
+    ("fixture", "violating_lines"),
+    (
+        (
+            "{{ package_name }}/bootstrap/invalid_logic.py",
+            {7, 9, 11, 13, 17, 21, 24, 26, 27, 28, 29, 30, 31, 32, 33, 34, 39, 42}
+            | {47, 53, 54, 55, 56, 57, 58}
+            | {63, 71, 72, 73, 74},
+        ),
+        ("{{ package_name }}/bootstrap/valid_wiring.py", set()),
+        ("tests/bootstrap/test_wiring.py", set()),
+    ),
+)
+def test_the_composition_root_holds_no_logic(
+    scan: ScanFixtures, fixture: str, violating_lines: set[int]
+) -> None:
+    findings = scan([FIXTURE_ROOT / fixture])
+
+    assert _lines_of(findings, "composition-root-logic") == violating_lines
+
+
+@pytest.mark.parametrize(
+    ("fixture", "rule", "violating_lines"),
+    (
+        ("value_objects/invalid_value_objects.py", "domain-value-object-frozen", {6, 11, 16}),
+        (
+            "value_objects/invalid_value_objects.py",
+            "domain-value-object-mutable-field",
+            {23, 24, 25},
+        ),
+        ("value_objects/valid_value_objects.py", "domain-value-object-frozen", set()),
+        ("value_objects/valid_value_objects.py", "domain-value-object-mutable-field", set()),
+        ("services/invalid_stateful_services.py", "domain-service-stateless", {7, 17}),
+        ("services/valid_pure_services.py", "domain-service-stateless", set()),
+        ("entities/invalid_entities.py", "domain-entity-equality", {6}),
+        ("entities/invalid_entities.py", "domain-entity-hash", {6, 12}),
+        ("entities/valid_entities.py", "domain-entity-equality", set()),
+        ("entities/valid_entities.py", "domain-entity-hash", set()),
+    ),
+)
+def test_domain_content_rules_flag_each_violation_and_accept_valid_objects(
+    scan: ScanFixtures, fixture: str, rule: str, violating_lines: set[int]
+) -> None:
+    assert _lines_of(scan([DOMAIN_FIXTURES / fixture]), rule) == violating_lines
+
+
+@pytest.mark.parametrize(
+    ("fixture", "violating_lines"),
+    (
+        ("invalid_wall_clock.py", {10, 11, 12, 13, 14, 15, 16, 17}),
+        ("valid_injected_time.py", set()),
+        ("adapters/system/clock.py", set()),
+    ),
+)
+def test_the_wall_clock_is_read_only_by_the_clock_adapter(
+    scan: ScanFixtures, fixture: str, violating_lines: set[int]
+) -> None:
+    findings = scan([PACKAGE_FIXTURES / fixture])
+
+    assert _lines_of(findings, "wall-clock-outside-clock-adapter") == violating_lines
+
+
+@pytest.mark.parametrize(
+    ("fixture", "violating_lines"),
+    (
+        ("invalid_field_copy.py", {22, 26, 32}),
+        ("valid_field_copy.py", set()),
+        ("presentation/cli/valid_argument_copy.py", set()),
+        ("adapters/api/mapper/valid_dto_copy.py", set()),
+    ),
+)
+def test_an_object_is_not_built_by_copying_another_s_fields_one_by_one(
+    scan: ScanFixtures, fixture: str, violating_lines: set[int]
+) -> None:
+    findings = scan([PACKAGE_FIXTURES / fixture])
+
+    assert _lines_of(findings, "field-by-field-copy") == violating_lines
+
+
+@pytest.mark.parametrize(
+    ("fixture", "violating_lines"),
+    (
+        ("invalid_environment_read.py", {4, 8, 9, 10, 11, 12}),
+        ("valid_no_environment.py", set()),
+        ("bootstrap/valid_environment.py", set()),
+        ("adapters/configuration.py", set()),
+        ("presentation/defaults.py", set()),
+    ),
+)
+def test_the_environment_is_read_only_by_composition_and_adapter_configuration(
+    scan: ScanFixtures, fixture: str, violating_lines: set[int]
+) -> None:
+    findings = scan([PACKAGE_FIXTURES / fixture])
+
+    assert _lines_of(findings, "environment-read-outside-composition") == violating_lines

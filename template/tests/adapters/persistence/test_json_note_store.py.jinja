@@ -1,0 +1,22 @@
+"""Notes kept in a JSON file survive a new store reading the same file."""
+
+from pathlib import Path
+
+from {{ package_name }}.adapters.persistence.json_note_store import JsonNoteStore
+from {{ package_name }}.domain.value_objects.note import Note
+
+from tests.support.notes import MOMENT
+
+
+def test_a_missing_file_holds_no_notes(tmp_path: Path) -> None:
+    assert JsonNoteStore(tmp_path / "notes.json").list_notes() == ()
+
+
+def test_appended_notes_are_read_back_by_another_store(tmp_path: Path) -> None:
+    path = tmp_path / "nested" / "notes.json"
+    first, second = Note("first", MOMENT), Note("second", MOMENT)
+    writer = JsonNoteStore(path)
+    writer.append(first)
+    writer.append(second)
+
+    assert JsonNoteStore(path).list_notes() == (first, second)

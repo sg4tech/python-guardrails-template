@@ -1,0 +1,60 @@
+"""The command line runs one use case per command and shows its result or its error."""
+
+import io
+
+import pytest
+
+from {{ package_name }}.application.notes.add_note import AddNote
+from {{ package_name }}.application.notes.list_notes import ListNotes
+from {{ package_name }}.domain.value_objects.note import Note
+from {{ package_name }}.presentation.cli.cli import USAGE_ERROR, run
+from {{ package_name }}.presentation.cli.view import NoteView
+
+from tests.support.notes import MOMENT, FixedClock, InMemoryNoteStore
+
+
+class Console:
+    def __init__(self) -> None:
+        self.output = io.StringIO()
+        self.errors = io.StringIO()
+        self.view = NoteView(self.output, self.errors)
+
+
+def _run(argv: list[str], store: InMemoryNoteStore, console: Console) -> int:
+    return run(argv, AddNote(store, FixedClock()), ListNotes(store), console.view)
+
+
+def test_add_stores_the_note_and_confirms_it() -> None:
+    store, console = InMemoryNoteStore(), Console()
+
+    assert _run(["add", "buy milk"], store, console) == 0
+
+    assert store.notes == [Note("buy milk", MOMENT)]
+    assert console.output.getvalue() == "added: buy milk\n"
+
+
+def test_an_empty_note_is_reported_as_a_usage_error() -> None:
+    store, console = InMemoryNoteStore(), Console()
+
+    assert _run(["add", " "], store, console) == USAGE_ERROR
+
+    assert store.notes == []
+    assert console.errors.getvalue() == "error: a note must not be empty\n"
+
+
+def test_list_shows_every_note_with_its_moment() -> None:
+    store, console = InMemoryNoteStore(), Console()
+    store.append(Note("first", MOMENT))
+    store.append(Note("second", MOMENT))
+
+    assert _run(["list"], store, console) == 0
+
+    moment = MOMENT.isoformat()
+    assert console.output.getvalue() == f"{moment}  first\n{moment}  second\n"
+
+
+def test_a_command_is_required() -> None:
+    with pytest.raises(SystemExit) as error:
+        _run([], InMemoryNoteStore(), Console())
+
+    assert error.value.code == USAGE_ERROR

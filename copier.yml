@@ -1,0 +1,45 @@
+_min_copier_version: "9.0.0"
+_subdirectory: template
+_envops:
+  keep_trailing_newline: true
+
+project_name:
+  type: str
+  help: Human-readable name of the project
+  default: My Project
+
+project_slug:
+  type: str
+  help: Distribution, Compose and Docker image name
+  default: "{{ project_name | lower | replace(' ', '-') }}"
+  validator: >-
+    {% if not (project_slug | regex_search('^[a-z][a-z0-9-]*$')) %}
+    Use lowercase letters, digits and dashes, starting with a letter.
+    {% endif %}
+
+package_name:
+  type: str
+  help: Python import package
+  default: "{{ project_slug | replace('-', '_') }}"
+  validator: >-
+    {% if not (package_name | regex_search('^[a-z][a-z0-9_]*$')) %}
+    Use lowercase letters, digits and underscores, starting with a letter.
+    {% elif package_name in ['tests', 'domain', 'application', 'adapters', 'presentation', 'bootstrap', 'devtools'] %}
+    The architecture rules find layers by these directory names; choose another package name.
+    {% endif %}
+
+description:
+  type: str
+  help: One-line description
+  default: ""
+
+python_version:
+  type: str
+  help: Python version of the project image
+  choices: ["3.12", "3.13"]
+  default: "3.12"
+
+default_branch:
+  type: str
+  help: Branch that pull requests target and CI verifies
+  default: main

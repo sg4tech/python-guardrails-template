@@ -1,0 +1,36 @@
+name: Template
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: template-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-and-verify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # The second answer set sorts its package after `tests`, carries a digit and uses the
+        # newest Python, so answers that change the rendered files are exercised too.
+        include:
+          - project_name: Demo Notes
+            python_version: "3.12"
+          - project_name: Zeta App2
+            python_version: "3.13"
+    env:
+      PROJECT_NAME: ${{ matrix.project_name }}
+      PYTHON_VERSION: ${{ matrix.python_version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Copier renders the template from its git history.
+          fetch-depth: 0
+      - run: make test-template

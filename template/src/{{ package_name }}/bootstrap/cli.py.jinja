@@ -1,0 +1,23 @@
+"""Build the command line's objects and run it: the only place that constructs and wires them."""
+
+import os
+import sys
+from collections.abc import Sequence
+from pathlib import Path
+
+from {{ package_name }}.adapters.persistence.json_note_store import JsonNoteStore
+from {{ package_name }}.adapters.system.clock import SystemClock
+from {{ package_name }}.application.notes.add_note import AddNote
+from {{ package_name }}.application.notes.list_notes import ListNotes
+from {{ package_name }}.presentation.cli.cli import run
+from {{ package_name }}.presentation.cli.view import NoteView
+
+NOTES_FILE_VARIABLE = "NOTES_FILE"
+DEFAULT_NOTES_FILE = ".runtime/notes.json"
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    store = JsonNoteStore(Path(os.environ.get(NOTES_FILE_VARIABLE, DEFAULT_NOTES_FILE)))
+    return run(
+        argv, AddNote(store, SystemClock()), ListNotes(store), NoteView(sys.stdout, sys.stderr)
+    )

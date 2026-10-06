@@ -1,0 +1,12 @@
+# How many Python modules one package may hold before it is split into subpackages
+# (tests/architecture/test_package_size.py). `__init__.py` is not counted.
+max_modules = 10
+
+# Packages whose flat layout is a convention of the tool that owns them, with the reason, as
+# "src/{{ package_name }}/path/to/package" = "reason".
+[exempt]
+
+# Packages that are over the limit when the check is introduced into an existing project. Each one
+# holds exactly the number of modules recorded here: it may not grow, a split lowers the number,
+# and the entry is removed once the directory is within the limit. Nothing new is added here.
+[frozen]

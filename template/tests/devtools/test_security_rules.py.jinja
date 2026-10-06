@@ -1,0 +1,31 @@
+"""Rules match lines and paths, honour the allow marker and never repeat what they matched."""
+
+from {{ package_name }}.devtools.security_rules import Finding, parse_rules, scan_path, scan_text
+
+from tests.devtools.rule_samples import SAMPLE_RULES
+
+KEY = "sk-" + "x" * 24
+
+
+def test_a_content_rule_reports_the_line_it_matched() -> None:
+    findings = scan_text(parse_rules(SAMPLE_RULES), "app.py", f"first line\nkey = {KEY!r}\n")
+
+    assert findings == [Finding("app.py", 2, "api-key", "API key")]
+
+
+def test_a_line_carrying_the_allow_marker_is_skipped() -> None:
+    text = f"key = {KEY!r}  # secret-scan: allow\n"
+
+    assert scan_text(parse_rules(SAMPLE_RULES), "app.py", text) == []
+
+
+def test_a_path_rule_reports_the_file_without_a_line() -> None:
+    assert scan_path(parse_rules(SAMPLE_RULES), "logs/run.log") == [
+        Finding("logs/run.log", None, "log-file", "Log file")
+    ]
+
+
+def test_a_finding_never_holds_the_matched_text() -> None:
+    (finding,) = scan_text(parse_rules(SAMPLE_RULES), "app.py", KEY)
+
+    assert KEY not in repr(finding)

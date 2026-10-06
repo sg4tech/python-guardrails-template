@@ -1,0 +1,19 @@
+"""A note holds a non-empty text and the moment it was written."""
+
+import pytest
+
+from {{ package_name }}.domain.value_objects.note import EmptyNoteError, Note
+
+from tests.support.notes import MOMENT
+
+
+def test_a_note_keeps_its_text_and_moment() -> None:
+    note = Note("buy milk", MOMENT)
+
+    assert (note.text, note.written_at) == ("buy milk", MOMENT)
+
+
+@pytest.mark.parametrize("text", ["", "   ", "\n\t"])
+def test_a_note_must_say_something(text: str) -> None:
+    with pytest.raises(EmptyNoteError):
+        Note(text, MOMENT)

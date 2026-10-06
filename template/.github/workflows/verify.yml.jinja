@@ -1,0 +1,21 @@
+name: Verify
+
+on:
+  pull_request:
+    branches: [{{ default_branch }}]
+  push:
+    branches: [{{ default_branch }}]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-{% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: make verify

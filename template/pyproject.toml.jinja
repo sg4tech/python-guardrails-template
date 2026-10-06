@@ -1,0 +1,157 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "{{ project_slug }}"
+version = "0.1.0"
+description = "{{ description }}"
+requires-python = ">={{ python_version }}"
+dependencies = []
+
+[project.scripts]
+{{ project_slug }} = "{{ package_name }}.bootstrap.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "bandit",
+  # The [tool.complexipy] keys were checked against the 8.x releases.
+  "complexipy>=8",
+  "deptry",
+  "flake8",
+  "flake8-annotations-complexity",
+  "import-linter",
+  "mypy",
+  "pip-audit",
+  "pylint",
+  "pytest",
+  "pytest-cov",
+  "pytest-timeout",
+  "ruff",
+  # Older releases cannot parse PEP 695 generics, and the resolver otherwise backtracks to them.
+  "semgrep>=1.166",
+  "vulture",
+  "xenon",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{{ package_name }}"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 5
+addopts = ["-q", "-W", "error::DeprecationWarning"]
+
+[tool.coverage.run]
+branch = true
+source = ["{{ package_name }}"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
+# Semgrep fixtures are inputs the architecture tests scan, written to break rules; they are not run.
+exclude = ["^tests/fixtures/"]
+
+[tool.ruff]
+target-version = "py{{ python_version | replace('.', '') }}"
+line-length = 100
+extend-exclude = [".runtime"]
+
+[tool.ruff.lint]
+select = [
+  "E", "F", "I", "B", "UP", "N",
+  "PTH", "SIM", "C4", "RET", "ERA", "PGH", "TC", "PERF", "FURB", "RSE", "ARG", "A",
+  "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLW1510", "BLE001", "SLF001", "PLC0415",
+]
+
+[tool.ruff.lint.isort]
+# Test helpers sort after the package under test whatever its name, so imports read the same in
+# every project made from the template.
+known-local-folder = ["tests"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test builders take many keyword arguments to keep call sites short, and test doubles keep the
+# parameters of what they replace, which callers pass by name, even where a double ignores them.
+"tests/**" = ["PLR0913", "ARG"]
+# Deliberately rule-breaking inputs that the architecture tests expect semgrep to flag.
+"tests/fixtures/semgrep/**" = ["PTH123", "SIM115"]
+
+[tool.deptry]
+optional_dependencies_dev_groups = ["dev"]
+
+# Cognitive complexity: how hard a function is to follow, which nesting raises and cyclomatic
+# complexity (xenon) does not see. Tests are checked too, since a test that branches is hard to
+# trust. The limit is the tool's default, stated so that a new release cannot move it silently.
+[tool.complexipy]
+paths = ["src", "tests"]
+max-complexity-allowed = 15
+failed = true
+# The cache only serves comparisons between runs; keep it with the other local state.
+cache-dir = ".runtime/complexipy"
+
+[tool.pylint.main]
+fail-on = ["duplicate-code"]
+
+[tool.pylint."messages control"]
+disable = ["all"]
+enable = [
+  "duplicate-code",
+  "cyclic-import",
+  "too-many-lines",
+  "redefined-outer-name",
+  # Size limits that ruff does not hold outside its preview rules.
+  "too-many-public-methods",
+  "too-many-ancestors",
+  "too-many-locals",
+]
+
+# Only product code is scanned, so code that nothing but the tests uses counts as dead.
+[tool.vulture]
+paths = ["src"]
+
+[tool.importlinter]
+root_package = "{{ package_name }}"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Layered architecture"
+type = "layers"
+containers = ["{{ package_name }}"]
+layers = [
+  "bootstrap",
+  "presentation | adapters",
+  "application",
+  "domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "Domain is split by kind of object"
+type = "layers"
+containers = ["{{ package_name }}.domain"]
+layers = [
+  "(services)",
+  "(entities)",
+  "(value_objects)",
+]
+exhaustive = true
+
+[[tool.importlinter.contracts]]
+name = "Application slices have no import cycles"
+type = "acyclic_siblings"
+ancestors = ["{{ package_name }}.application"]
+
+[[tool.importlinter.contracts]]
+name = "Product code never imports the developer tools"
+type = "forbidden"
+source_modules = [
+  "{{ package_name }}.bootstrap",
+  "{{ package_name }}.presentation",
+  "{{ package_name }}.adapters",
+  "{{ package_name }}.application",
+  "{{ package_name }}.domain",
+]
+forbidden_modules = ["{{ package_name }}.devtools"]

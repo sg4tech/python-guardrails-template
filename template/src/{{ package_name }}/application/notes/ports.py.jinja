@@ -1,0 +1,16 @@
+"""What the notes use cases need from the outside world."""
+
+from datetime import datetime
+from typing import Protocol
+
+from {{ package_name }}.domain.value_objects.note import Note
+
+
+class Clock(Protocol):
+    def now(self) -> datetime: ...
+
+
+class NoteStore(Protocol):
+    def append(self, note: Note) -> None: ...
+
+    def list_notes(self) -> tuple[Note, ...]: ...

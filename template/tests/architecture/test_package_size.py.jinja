@@ -1,0 +1,63 @@
+"""No directory grows into a long flat list of modules; a large one is split into subpackages."""
+
+import tomllib
+from pathlib import Path
+
+REPOSITORY_ROOT = Path(__file__).parents[2]
+CONFIG = tomllib.loads((REPOSITORY_ROOT / "config" / "package-size.toml").read_text())
+MAX_MODULES: int = CONFIG["max_modules"]
+EXEMPT: dict[str, str] = CONFIG["exempt"]
+FROZEN: dict[str, int] = CONFIG["frozen"]
+ROOTS = ("src/{{ package_name }}", "tests")
+
+
+def _module_count(directory: Path) -> int:
+    return sum(1 for path in directory.glob("*.py") if path.name != "__init__.py")
+
+
+def _module_counts() -> dict[str, int]:
+    """Count the modules of every package; directories of plain inputs, like fixtures, are not."""
+    return {
+        directory.relative_to(REPOSITORY_ROOT).as_posix(): _module_count(directory)
+        for root in ROOTS
+        for directory in [REPOSITORY_ROOT / root, *(REPOSITORY_ROOT / root).rglob("*")]
+        if (directory / "__init__.py").is_file()
+    }
+
+
+COUNTS = _module_counts()
+
+
+def test_no_directory_holds_more_modules_than_the_limit() -> None:
+    oversized = {
+        directory: count
+        for directory, count in COUNTS.items()
+        if count > MAX_MODULES and directory not in EXEMPT and directory not in FROZEN
+    }
+
+    assert oversized == {}, f"split these directories into subpackages: {oversized}"
+
+
+def test_a_frozen_directory_holds_exactly_its_recorded_modules() -> None:
+    drifted = {
+        directory: COUNTS.get(directory)
+        for directory, recorded in FROZEN.items()
+        if COUNTS.get(directory) != recorded
+    }
+
+    assert drifted == {}, (
+        f"these directories no longer hold the module counts config/package-size.toml records: "
+        f"{drifted}; a frozen package may not grow, and a split lowers its number"
+    )
+
+
+def test_a_frozen_directory_leaves_the_list_once_within_the_limit() -> None:
+    within = [directory for directory, recorded in FROZEN.items() if recorded <= MAX_MODULES]
+
+    assert within == [], f"remove these from [frozen] in config/package-size.toml: {within}"
+
+
+def test_an_exempt_directory_exists() -> None:
+    missing = [directory for directory in EXEMPT if directory not in COUNTS]
+
+    assert missing == [], f"remove these from [exempt] in config/package-size.toml: {missing}"
