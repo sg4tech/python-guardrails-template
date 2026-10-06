@@ -3,12 +3,16 @@ rules:
     languages: [python]
     severity: ERROR
     message: >-
-      Application and domain code must delegate direct I/O, including database access, files and
-      processes, to a port that an adapter implements.
+      Application, domain{% if strict_cli %} and command-line{% endif %} code must delegate direct I/O, including database
+      access, files and processes, to a port that an adapter implements.
     paths:
       include:
         - "**/application/**/*.py"
         - "**/domain/**/*.py"
+{%- if strict_cli %}
+        - "**/cli.py"
+        - "**/*_cli.py"
+{%- endif %}
       exclude:
         # The mirrored test tree reuses the source directory names; only the fixtures, which are
         # meant to be flagged, stay in scope.
@@ -403,3 +407,184 @@ rules:
               def __hash__(...):
                   ...
               ...
+{%- if strict_cli %}
+
+  - id: guardrails.cli-wait
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Command-line modules must delegate waiting to a service.
+    paths:
+      include:
+        - "**/cli.py"
+        - "**/*_cli.py"
+    pattern: time.sleep(...)
+
+  # Thin command handlers: `handle_<command>(args, service, view) -> int` in any command-line
+  # module calls one service method, hands the result to the view, and returns the exit code.
+  # Left to review: branching through `and`/`or`, `with` blocks, other ways to write output, and
+  # reaching the service through an alias.
+  - id: guardrails.cli-handler-signature
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A command handler must be declared as `handle_<command>(args: ..., service: ..., view: ...) -> int`.
+    paths:
+      include:
+        - "**/cli.py"
+        - "**/*_cli.py"
+    patterns:
+      - pattern: |
+          def $HANDLER(...):
+              ...
+      - metavariable-regex:
+          metavariable: $HANDLER
+          regex: "^handle_"
+      - pattern-not: |
+          def $HANDLER(args: $ARGS, service: $SERVICE, view: $VIEW) -> int:
+              ...
+
+  - id: guardrails.cli-handler-control-flow
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A command handler must not branch, loop, or catch errors; the dispatcher maps errors and the
+      service owns the logic.
+    paths:
+      include:
+        - "**/cli.py"
+        - "**/*_cli.py"
+    patterns:
+      - pattern-inside: |
+          def $HANDLER(...):
+              ...
+      - metavariable-regex:
+          metavariable: $HANDLER
+          regex: "^handle_"
+      - pattern-either:
+          - pattern: |
+              if $CONDITION:
+                  ...
+          - pattern: |
+              for $ITEM in $ITERABLE:
+                  ...
+          - pattern: |
+              while $CONDITION:
+                  ...
+          - pattern: |
+              try:
+                  ...
+              except ...:
+                  ...
+          - pattern: |
+              try:
+                  ...
+              except ...:
+                  ...
+              else:
+                  ...
+          - pattern: |
+              try:
+                  ...
+              finally:
+                  ...
+          - pattern: |
+              match $SUBJECT:
+                  case $CASE:
+                      ...
+          - pattern: $THEN if $CONDITION else $OTHERWISE
+          - pattern: "[$ELEMENT for $ITEM in $ITERABLE]"
+          - pattern: "{$ELEMENT for $ITEM in $ITERABLE}"
+          - pattern: "{$KEY: $VALUE for $ITEM in $ITERABLE}"
+          - pattern: ($ELEMENT for $ITEM in $ITERABLE)
+
+  - id: guardrails.cli-output
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A command-line module must leave printing, serialization, and file output to its views.
+    paths:
+      include:
+        - "**/cli.py"
+        - "**/*_cli.py"
+    pattern-either:
+      - pattern: print(...)
+      - pattern: json.dumps(...)
+      - pattern: open(...)
+      - pattern: $PATH.write_text(...)
+      - pattern: $PATH.mkdir(...)
+
+  - id: guardrails.cli-handler-ambient-state
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A command handler must receive the clock and home directory from composition instead of
+      reading them.
+    paths:
+      include:
+        - "**/cli.py"
+        - "**/*_cli.py"
+    patterns:
+      - pattern-inside: |
+          def $HANDLER(...):
+              ...
+      - metavariable-regex:
+          metavariable: $HANDLER
+          regex: "^handle_"
+      - pattern-either:
+          - pattern: datetime.datetime.now(...)
+          - pattern: pathlib.Path.home(...)
+
+  - id: guardrails.cli-handler-construction
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A command handler must receive its service and view ready-made; construction and calls into
+      the composition root belong to composition.
+    paths:
+      include:
+        - "**/cli.py"
+        - "**/*_cli.py"
+    patterns:
+      - pattern-inside: |
+          def $HANDLER(...):
+              ...
+      - metavariable-regex:
+          metavariable: $HANDLER
+          regex: "^handle_"
+      - pattern-either:
+          - patterns:
+              - pattern-either:
+                  - pattern: $CLASS(...)
+                  - pattern: $MODULE.$CLASS(...)
+              - metavariable-regex:
+                  metavariable: $CLASS
+                  regex: "^[A-Z]\\w*$"
+          - pattern: {{ package_name }}.bootstrap.$MODULE.$FUNCTION(...)
+          - pattern: {{ package_name }}.bootstrap.$GROUP.$MODULE.$FUNCTION(...)
+
+  - id: guardrails.cli-handler-single-service-call
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A command handler must call exactly one service method; orchestrating several calls is the
+      service's job.
+    paths:
+      include:
+        - "**/cli.py"
+        - "**/*_cli.py"
+    patterns:
+      - pattern-inside: |
+          def $HANDLER(...):
+              ...
+      - metavariable-regex:
+          metavariable: $HANDLER
+          regex: "^handle_"
+      - pattern-either:
+          - pattern: |
+              <... service.$FIRST(...) ...>
+              ...
+              <... service.$SECOND(...) ...>
+          - pattern: $CALLEE(..., <... service.$FIRST(...) ...>, ..., <... service.$SECOND(...) ...>, ...)
+          - pattern: service.$FIRST(..., <... service.$SECOND(...) ...>, ...)
+{%- endif %}

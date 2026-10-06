@@ -139,6 +139,15 @@ layers = [
 ]
 exhaustive = true
 
+# Every slice is listed, so a module dropped loose into the application layer fails verification;
+# a new slice joins the list, as `"notes | billing"` for slices independent of each other.
+[[tool.importlinter.contracts]]
+name = "Application is split into feature slices"
+type = "layers"
+containers = ["{{ package_name }}.application"]
+layers = ["notes"]
+exhaustive = true
+
 [[tool.importlinter.contracts]]
 name = "Application slices have no import cycles"
 type = "acyclic_siblings"

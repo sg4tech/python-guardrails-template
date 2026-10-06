@@ -33,6 +33,13 @@ description:
   help: One-line description
   default: ""
 
+strict_cli:
+  type: bool
+  help: >-
+    Hold command-line modules to thin handlers: each handle_<command>(args, service, view) calls
+    one service method and hands its result to the view
+  default: true
+
 python_version:
   type: str
   help: Python version of the project image

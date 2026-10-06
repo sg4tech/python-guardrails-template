@@ -52,15 +52,23 @@ be flagged.
 
 - **Domain** is split by kind of object: `entities` (equal when their identity is equal),
   `value_objects` (frozen, no mutable collections) and `services` (pure, no state between calls).
-- **Application** is split into feature slices. A slice holds its use cases and `ports.py`.
-  Anything that touches the outside world, including the filesystem, is reached through a port
-  declared in the slice. A new capability adds a slice rather than growing shared modules.
+- **Application** is split into feature slices. A slice holds its use cases, `ports.py` and, where
+  the capability is a command, its command service. Anything that touches the outside world,
+  including the filesystem, is reached through a port declared in the slice. A new capability
+  adds a slice rather than growing shared modules, and the slice joins the exhaustive slice
+  contract in `pyproject.toml`, so a loose module in the layer fails verification.
 - Domain and application code is pure: it imports only its own code and an allow-list of pure
   standard modules, nothing that reaches the network, files, processes, the environment, the clock
   or randomness, and no third-party library. A module that is pure joins the allow-list in the
   Semgrep rule; anything else is an adapter's work reached through a port.
 - **Adapters** implement the ports and are the only code that talks to the database, the network,
   the clock or the disk. **Presentation** holds the delivery channels, such as the command line.
+{%- if strict_cli %}
+- Every command-line module (`cli.py`, `*_cli.py`) follows the thin-handler shape: a dispatcher
+  receives a service and a view from composition and maps errors to exit codes, and each
+  `handle_<command>(args, service, view) -> int` calls one service method and hands its result to
+  the view. Semgrep rules and an architecture test hold every such module to it.
+{%- endif %}
 - `src/{{ package_name }}/bootstrap/` is the single composition root: the only place where concrete
   objects are constructed and wired together, and it contains no logic.
 - The wall clock is read only by `adapters/system/clock.py`; everything else receives the time, so

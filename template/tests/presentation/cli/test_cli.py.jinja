@@ -1,11 +1,10 @@
-"""The command line runs one use case per command and shows its result or its error."""
+"""The command line hands each command to its handler and maps errors to exit codes."""
 
 import io
 
 import pytest
 
-from {{ package_name }}.application.notes.add_note import AddNote
-from {{ package_name }}.application.notes.list_notes import ListNotes
+from {{ package_name }}.application.notes.command_service import NotesService
 from {{ package_name }}.domain.value_objects.note import Note
 from {{ package_name }}.presentation.cli.cli import USAGE_ERROR, run
 from {{ package_name }}.presentation.cli.view import NoteView
@@ -21,7 +20,7 @@ class Console:
 
 
 def _run(argv: list[str], store: InMemoryNoteStore, console: Console) -> int:
-    return run(argv, AddNote(store, FixedClock()), ListNotes(store), console.view)
+    return run(argv, NotesService(store, FixedClock()), console.view)
 
 
 def test_add_stores_the_note_and_confirms_it() -> None:
@@ -42,15 +41,18 @@ def test_an_empty_note_is_reported_as_a_usage_error() -> None:
     assert console.errors.getvalue() == "error: a note must not be empty\n"
 
 
-def test_list_shows_every_note_with_its_moment() -> None:
+@pytest.mark.parametrize(
+    ("argv", "shown"), [(["list"], ["first", "second"]), (["list", "--last", "1"], ["second"])]
+)
+def test_list_shows_the_notes_with_their_moment(argv: list[str], shown: list[str]) -> None:
     store, console = InMemoryNoteStore(), Console()
     store.append(Note("first", MOMENT))
     store.append(Note("second", MOMENT))
 
-    assert _run(["list"], store, console) == 0
+    assert _run(argv, store, console) == 0
 
     moment = MOMENT.isoformat()
-    assert console.output.getvalue() == f"{moment}  first\n{moment}  second\n"
+    assert console.output.getvalue() == "".join(f"{moment}  {text}\n" for text in shown)
 
 
 def test_a_command_is_required() -> None:

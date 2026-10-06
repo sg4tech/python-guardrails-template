@@ -1,0 +1,42 @@
+"""The notes service stores notes at the clock's time and reads them back in order."""
+
+import pytest
+
+from {{ package_name }}.application.notes.command_service import NotesService
+from {{ package_name }}.domain.value_objects.note import EmptyNoteError, Note
+
+from tests.support.notes import MOMENT, FixedClock, InMemoryNoteStore
+
+
+def test_a_note_is_stored_at_the_clock_s_time() -> None:
+    store = InMemoryNoteStore()
+
+    note = NotesService(store, FixedClock()).add("buy milk")
+
+    assert note == Note("buy milk", MOMENT)
+    assert store.notes == [note]
+
+
+def test_an_empty_note_is_not_stored() -> None:
+    store = InMemoryNoteStore()
+
+    with pytest.raises(EmptyNoteError):
+        NotesService(store, FixedClock()).add(" ")
+
+    assert store.notes == []
+
+
+@pytest.mark.parametrize(
+    ("last", "expected"),
+    [(None, ("first", "second", "third")), (2, ("second", "third")), (5, ("first", "second", "third"))],
+)
+def test_notes_are_listed_in_the_order_they_were_written(
+    last: int | None, expected: tuple[str, ...]
+) -> None:
+    store = InMemoryNoteStore()
+    for text in ("first", "second", "third"):
+        store.append(Note(text, MOMENT))
+
+    notes = NotesService(store, FixedClock()).list_notes(last)
+
+    assert tuple(note.text for note in notes) == expected
