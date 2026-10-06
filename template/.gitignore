@@ -5,6 +5,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
+# Editor settings are per person.
+.idea/
+.vscode/
 # Local state: settings, caches and data the running tool writes.
 .runtime/
 .env
