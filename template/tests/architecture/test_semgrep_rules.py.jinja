@@ -266,3 +266,41 @@ def test_the_environment_is_read_only_by_composition_and_adapter_configuration(
     findings = scan([PACKAGE_FIXTURES / fixture])
 
     assert _lines_of(findings, "environment-read-outside-composition") == violating_lines
+{%- if strict_cli %}
+
+
+THIN_HANDLER_FIXTURES = FIXTURE_ROOT / "cli_handlers"
+
+
+@pytest.mark.parametrize(
+    ("rule", "violating_lines"),
+    (
+        ("cli-handler-control-flow", {14, 16, 18, 20, 24, 27, 32, 33, 34, 35, 85}),
+        ("cli-output", {41, 42, 43, 44, 45, 110}),
+        ("cli-handler-ambient-state", {51, 52}),
+        ("cli-handler-construction", {58, 59, 60}),
+        ("cli-handler-signature", {64, 69, 74, 79}),
+        ("cli-handler-single-service-call", {94, 100, 105}),
+    ),
+)
+def test_thin_handler_rules_flag_each_violation_and_accept_thin_handlers(
+    scan: ScanFixtures, rule: str, violating_lines: set[int]
+) -> None:
+    assert _lines_of(scan([THIN_HANDLER_FIXTURES / "invalid/cli.py"]), rule) == violating_lines
+    assert _lines_of(scan([THIN_HANDLER_FIXTURES / "valid/cli.py"]), rule) == set()
+
+
+@pytest.mark.parametrize(
+    ("module", "expected_rules"),
+    (
+        ("sync_cli.py", {"cli-handler-signature", "cli-output", "core-direct-io", "cli-wait"}),
+        ("commands.py", set()),
+    ),
+)
+def test_thin_handler_rules_cover_every_command_line_module(
+    scan: ScanFixtures, module: str, expected_rules: set[str]
+) -> None:
+    findings = scan([THIN_HANDLER_FIXTURES / "scope" / module])
+
+    assert {_rule(finding) for finding in findings} == expected_rules
+{%- endif %}

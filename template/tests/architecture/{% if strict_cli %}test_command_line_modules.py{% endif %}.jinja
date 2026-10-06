@@ -1,0 +1,33 @@
+"""Every command-line module declares thin handlers, so the handler rules have something to hold."""
+
+import ast
+from pathlib import Path
+
+import pytest
+
+PACKAGE_ROOT = Path(__file__).parents[2] / "src" / "{{ package_name }}"
+
+
+def _command_line_modules() -> list[Path]:
+    return sorted({*PACKAGE_ROOT.rglob("cli.py"), *PACKAGE_ROOT.rglob("*_cli.py")})
+
+
+def _composition_modules() -> set[Path]:
+    """The composition root builds the command line and is held by its own rule instead."""
+    return set((PACKAGE_ROOT / "bootstrap").rglob("*.py"))
+
+
+@pytest.mark.parametrize(
+    "module",
+    [path for path in _command_line_modules() if path not in _composition_modules()],
+    ids=lambda path: str(path.relative_to(PACKAGE_ROOT)),
+)
+def test_every_command_line_module_declares_thin_handlers(module: Path) -> None:
+    """A command-line module without handle_* functions would escape every handler rule."""
+    functions = {
+        node.name
+        for node in ast.parse(module.read_text(encoding="utf-8")).body
+        if isinstance(node, ast.FunctionDef)
+    }
+
+    assert any(name.startswith("handle_") for name in functions), module

@@ -1,26 +1,36 @@
-"""Run a command: parse the arguments, call one use case and show its result."""
+"""Command handlers: each calls one service method and hands its result to the view."""
 
-from collections.abc import Sequence
+import argparse
+from collections.abc import Callable, Sequence
 
-from {{ package_name }}.application.notes.add_note import AddNote
-from {{ package_name }}.application.notes.list_notes import ListNotes
+from {{ package_name }}.application.notes.command_service import NotesService
 from {{ package_name }}.domain.value_objects.note import EmptyNoteError
 from {{ package_name }}.presentation.cli.command_line import build_parser
 from {{ package_name }}.presentation.cli.view import NoteView
 
 USAGE_ERROR = 2
 
+type Handler = Callable[[argparse.Namespace, NotesService, NoteView], int]
 
-def run(
-    argv: Sequence[str] | None, add_note: AddNote, list_notes: ListNotes, view: NoteView
-) -> int:
-    arguments = build_parser().parse_args(argv)
-    if arguments.command == "add":
-        try:
-            view.show_added(add_note.execute(arguments.text))
-        except EmptyNoteError as error:
-            view.show_error(str(error))
-            return USAGE_ERROR
-        return 0
-    view.show_notes(list_notes.execute())
+
+def handle_add(args: argparse.Namespace, service: NotesService, view: NoteView) -> int:
+    view.show_added(service.add(args.text))
     return 0
+
+
+def handle_list(args: argparse.Namespace, service: NotesService, view: NoteView) -> int:
+    view.show_notes(service.list_notes(args.last))
+    return 0
+
+
+HANDLERS: dict[str, Handler] = {"add": handle_add, "list": handle_list}
+
+
+def run(argv: Sequence[str] | None, service: NotesService, view: NoteView) -> int:
+    """Dispatch to the command's handler and map the errors it reports to an exit code."""
+    arguments = build_parser().parse_args(argv)
+    try:
+        return HANDLERS[arguments.command](arguments, service, view)
+    except EmptyNoteError as error:
+        view.show_error(str(error))
+        return USAGE_ERROR

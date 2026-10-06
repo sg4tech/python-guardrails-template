@@ -1,11 +1,12 @@
 #!/bin/sh
 # Generate a project from this template and run its full verification, the way a user would.
-# Answers can be overridden through the environment: PROJECT_NAME, PYTHON_VERSION.
+# Answers can be overridden through the environment: PROJECT_NAME, PYTHON_VERSION, STRICT_CLI.
 set -eu
 
 template_root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 project_name="${PROJECT_NAME:-Demo Notes}"
 python_version="${PYTHON_VERSION:-3.12}"
+strict_cli="${STRICT_CLI:-true}"
 slug="$(printf '%s' "$project_name" | tr '[:upper:] ' '[:lower:]-')"
 output_root="$template_root/.generated"
 output="$output_root/$slug"
@@ -24,6 +25,7 @@ docker run --rm \
   copier copy --defaults --vcs-ref HEAD \
     --data project_name="$project_name" \
     --data python_version="$python_version" \
+    --data strict_cli="$strict_cli" \
     --data description="Template self-check" \
     /template "/output/$slug"
 

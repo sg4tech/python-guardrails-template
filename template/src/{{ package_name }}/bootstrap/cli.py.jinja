@@ -7,8 +7,7 @@ from pathlib import Path
 
 from {{ package_name }}.adapters.persistence.json_note_store import JsonNoteStore
 from {{ package_name }}.adapters.system.clock import SystemClock
-from {{ package_name }}.application.notes.add_note import AddNote
-from {{ package_name }}.application.notes.list_notes import ListNotes
+from {{ package_name }}.application.notes.command_service import NotesService
 from {{ package_name }}.presentation.cli.cli import run
 from {{ package_name }}.presentation.cli.view import NoteView
 
@@ -18,6 +17,4 @@ DEFAULT_NOTES_FILE = ".runtime/notes.json"
 
 def main(argv: Sequence[str] | None = None) -> int:
     store = JsonNoteStore(Path(os.environ.get(NOTES_FILE_VARIABLE, DEFAULT_NOTES_FILE)))
-    return run(
-        argv, AddNote(store, SystemClock()), ListNotes(store), NoteView(sys.stdout, sys.stderr)
-    )
+    return run(argv, NotesService(store, SystemClock()), NoteView(sys.stdout, sys.stderr))

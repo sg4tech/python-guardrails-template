@@ -77,8 +77,9 @@ known-local-folder = ["tests"]
 # Test builders take many keyword arguments to keep call sites short, and test doubles keep the
 # parameters of what they replace, which callers pass by name, even where a double ignores them.
 "tests/**" = ["PLR0913", "ARG"]
-# Deliberately rule-breaking inputs that the architecture tests expect semgrep to flag.
-"tests/fixtures/semgrep/**" = ["PTH123", "SIM115"]
+# Deliberately rule-breaking inputs that the architecture tests expect semgrep to flag; they import
+# modules that do not exist, which the import sorter cannot place.
+"tests/fixtures/semgrep/**" = ["PTH123", "SIM115", "I001"]
 
 [tool.deptry]
 optional_dependencies_dev_groups = ["dev"]
@@ -137,6 +138,15 @@ layers = [
   "(entities)",
   "(value_objects)",
 ]
+exhaustive = true
+
+# Every slice is listed, so a module dropped loose into the application layer fails verification;
+# a new slice joins the list, as `"notes | billing"` for slices independent of each other.
+[[tool.importlinter.contracts]]
+name = "Application is split into feature slices"
+type = "layers"
+containers = ["{{ package_name }}.application"]
+layers = ["notes"]
 exhaustive = true
 
 [[tool.importlinter.contracts]]

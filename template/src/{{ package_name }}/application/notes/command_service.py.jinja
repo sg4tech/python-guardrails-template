@@ -1,0 +1,22 @@
+"""The notes commands: write a note down, read notes back."""
+
+from dataclasses import dataclass
+
+from {{ package_name }}.application.notes.ports import Clock, NoteStore
+from {{ package_name }}.domain.value_objects.note import Note
+
+
+@dataclass(frozen=True)
+class NotesService:
+    store: NoteStore
+    clock: Clock
+
+    def add(self, text: str) -> Note:
+        note = Note(text, self.clock.now())
+        self.store.append(note)
+        return note
+
+    def list_notes(self, last: int | None) -> tuple[Note, ...]:
+        """Every note in the order it was written, or only the latest `last` of them."""
+        notes = self.store.list_notes()
+        return notes if last is None else notes[max(len(notes) - last, 0) :]

@@ -8,5 +8,6 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     add = commands.add_parser("add", help="write a note")
     add.add_argument("text")
-    commands.add_parser("list", help="show every note")
+    listing = commands.add_parser("list", help="show the notes")
+    listing.add_argument("--last", type=int, help="show only the latest notes")
     return parser

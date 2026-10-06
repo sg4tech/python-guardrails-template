@@ -1,2 +1,5 @@
 .generated/
 __pycache__/
+# Editor settings are per person.
+.idea/
+.vscode/
