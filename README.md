@@ -4,6 +4,16 @@ A [Copier](https://copier.readthedocs.io/) template for Python projects whose ar
 quality rules are enforced by checks rather than by review. It is meant for code written with AI
 coding agents: the agent can move fast because every rule it might bend fails `make verify`.
 
+## Background
+
+Why each check exists and in what order to add them is explained in
+[Code entropy: how CI checks keep AI from piling up legacy](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/).
+
+The template is for new Python projects. To add the same checks to an existing repository in any
+language, hand your coding agent the
+[CI guardrails playbook](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md):
+*Apply https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md to this repository.*
+
 ## What a generated project gets
 
 - **Layers** `bootstrap → presentation | adapters → application → domain`, held by import-linter
