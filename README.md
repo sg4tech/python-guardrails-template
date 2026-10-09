@@ -1,42 +1,37 @@
 # Python guardrails template
 
-A [Copier](https://copier.readthedocs.io/) template for Python projects whose architecture and
-quality rules are enforced by checks rather than by review. It is meant for code written with AI
-coding agents: the agent can move fast because every rule it might bend fails `make verify`.
+[![Template](https://github.com/sg4tech/python-guardrails-template/actions/workflows/template.yml/badge.svg?branch=main)](https://github.com/sg4tech/python-guardrails-template/actions/workflows/template.yml)
+[![License: MIT](https://img.shields.io/github/license/sg4tech/python-guardrails-template)](LICENSE)
+[![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](copier.yml)
+[![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-orange.json)](https://github.com/copier-org/copier)
 
-## Background
+AI coding agents write code fast and pile up legacy just as fast. This template starts a Python
+project with checks that fail the build when that happens, so the agent has to fix the code
+instead.
 
-Why each check exists and in what order to add them is explained in
-[Code entropy: how CI checks keep AI from piling up legacy](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/).
+```sh
+copier copy gh:sg4tech/python-guardrails-template my-project
+```
 
-The template is for new Python projects. To add the same checks to an existing repository in any
-language, hand your coding agent the
-[CI guardrails playbook](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md):
-*Apply https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md to this repository.*
+**What fails the build:**
 
-## What a generated project gets
+- unused code
+- style and type errors
+- untested changes
+- functions that get too complex
+- copy-paste
+- imports that break the architecture
+- leaked secrets
 
-- **Layers** `bootstrap → presentation | adapters → application → domain`, held by import-linter
-  contracts; every application slice is listed, so a module dropped outside a slice fails.
-- **Thin command-line handlers** (optional, on by default): each `handle_<command>(args, service,
-  view)` calls one service method and hands its result to the view, with no branching, printing,
-  construction or ambient state; a command-line module without handlers fails too.
-- **Semgrep rules for what imports cannot express**: domain and application code imports only
-  its own code and pure standard modules and does no direct I/O; the wall clock and the
-  environment are read only where composition allows; value objects are frozen, domain services
-  stateless, entities compared by identity; the composition root holds no logic; objects are not
-  built by copying another's fields one by one.
-- **Tests of the rules themselves**: every Semgrep rule is checked against fixtures it must and
-  must not flag, so a rule that silently stops matching fails the build.
-- **Quality gates**: ruff, strict mypy, pytest with branch coverage, bandit, deptry, pip-audit,
-  vulture, cyclomatic and cognitive complexity, annotation complexity, pylint duplication and
-  size limits, a package-size limit, and a mirrored test layout.
-- **A commit-time secret scanner** with a pre-commit hook: tokens, keys, personal paths, local
-  databases and log files.
-- **Docker for every tool**, a `make verify` gate and a GitHub Actions workflow running it.
-- **`AGENTS.md`** stating the rules for coding agents and people alike.
-- **A small notes slice** that exercises every layer, so `make verify` passes right after
-  generation; replace it with your own code.
+**Existing project, or not Python?** Give your coding agent the
+[playbook](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md) with this prompt:
+
+```text
+Apply https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md to this repository.
+```
+
+**Why these checks:**
+[Code entropy: how CI checks keep AI from piling up legacy](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/)
 
 ## Use
 
@@ -50,13 +45,32 @@ make install-hooks
 make verify
 ```
 
-Pull later improvements of the template into the project:
+After generation it's a normal repository; `copier update` is optional and only pulls template
+improvements if you want them. Pull later improvements of the template into the project:
 
 ```sh
 copier update
 ```
 
 Copier merges the template's changes with yours and marks conflicts like `git merge`.
+
+## Details
+
+What a generated project gets:
+
+- **One gate:** `make verify` runs every check in Docker; GitHub Actions runs the same.
+- **Checks:** ruff, strict mypy, pytest with branch coverage, complexity and size limits,
+  copy-paste, dead code, dependency and vulnerability audit, bandit.
+- **Architecture (Clean / Hexagonal):** business logic is kept apart from the database, network and CLI, and can't
+  import them. Enforced by import-linter and Semgrep:
+  - domain and application code do no I/O
+  - value objects are frozen, services are stateless
+  - only `bootstrap/` builds objects
+  - the rules are tested, so a rule that stops working fails the build
+- **Thin CLI handlers** (optional): one service call per command.
+- **Secret scanner** on every commit.
+- **`AGENTS.md`** with the rules for agents and people.
+- **A small example** that passes `make verify`; replace it with your code.
 
 ## Developing the template
 
