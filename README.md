@@ -71,6 +71,33 @@ What a generated project gets:
 - **`AGENTS.md`** with the rules for agents and people.
 - **A small example** that passes `make verify`; replace it with your code.
 
+## Examples
+
+Two shortcuts an agent takes, and what CI says:
+
+Copying a function instead of reusing it:
+
+```text
+R0801: Similar lines in 2 files
+==demo_notes.domain.services.note_preview:[1:6]
+==demo_notes.domain.services.note_summary:[1:6]
+    words = text.split()
+    if len(words) <= 12:
+        return " ".join(words)
+    ...
+```
+
+Business logic importing the storage adapter directly:
+
+```text
+Layered architecture BROKEN
+demo_notes.application is not allowed to import demo_notes.adapters:
+- demo_notes.application.notes.add_note ->
+  demo_notes.adapters.persistence.json_note_store (l.1)
+```
+
+Either one keeps the build red until the code is fixed.
+
 ## Developing the template
 
 `make test-template` generates a project from the current commit and runs its `make verify`; CI
