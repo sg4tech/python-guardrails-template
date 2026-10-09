@@ -34,7 +34,8 @@ Apply https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md to this
 
 ## Use
 
-Requires Docker and [Copier](https://copier.readthedocs.io/en/stable/#installation).
+Requires Docker and [Copier](https://copier.readthedocs.io/en/stable/#installation). A generated project is a regular Python
+project: `pyproject.toml` at the root, dependencies managed by uv.
 
 ```sh
 copier copy gh:sg4tech/python-guardrails-template my-project

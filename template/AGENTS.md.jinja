@@ -4,8 +4,9 @@
 
 ## Runtime Environment
 
-Run all project tools and tests through Docker (`make verify`, `docker compose run --rm <service>`).
-Do not rely on host-installed project dependencies.
+`make verify` runs every check in Docker and is the gate. For quick local runs, `uv run <tool>`
+(for example `uv run pytest`) uses the same dependencies; a change is done only when `make verify`
+passes.
 
 ## Quality Requirements
 

@@ -12,4 +12,4 @@ ENV UV_SYSTEM_PYTHON=1 \
 
 # The pip the base image ships can carry known vulnerabilities, which the dependency audit
 # rejects; it is upgraded to its latest release like the project's own dependencies.
-RUN uv pip install --upgrade-package pip --editable '.[dev]'
+RUN uv pip install --upgrade-package pip --editable . --group dev

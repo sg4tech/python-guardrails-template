@@ -12,7 +12,7 @@ dependencies = []
 [project.scripts]
 {{ project_slug }} = "{{ package_name }}.bootstrap.cli:main"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
   "bandit",
   # The [tool.complexipy] keys were checked against the 8.x releases.
@@ -98,9 +98,6 @@ known-local-folder = ["tests"]
 # Deliberately rule-breaking inputs that the architecture tests expect semgrep to flag; they import
 # modules that do not exist, which the import sorter cannot place.
 "tests/fixtures/semgrep/**" = ["PTH123", "SIM115", "I001", "ANN401", "FBT001", "RUF036"]
-
-[tool.deptry]
-optional_dependencies_dev_groups = ["dev"]
 
 # Cognitive complexity: how hard a function is to follow, which nesting raises and cyclomatic
 # complexity (xenon) does not see. Tests are checked too, since a test that branches is hard to
