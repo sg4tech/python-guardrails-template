@@ -1,20 +1,47 @@
 # Python guardrails template
 
-A [Copier](https://copier.readthedocs.io/) template for Python projects whose architecture and
-quality rules are enforced by checks rather than by review. It is meant for code written with AI
-coding agents: the agent can move fast because every rule it might bend fails `make verify`.
+AI coding agents write code fast and pile up legacy just as fast. This template starts a Python
+project with checks that fail the build when that happens, so the agent has to fix the code
+instead.
 
-## Background
+```sh
+copier copy gh:sg4tech/python-guardrails-template my-project
+```
 
-Why each check exists and in what order to add them is explained in
-[Code entropy: how CI checks keep AI from piling up legacy](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/).
+**What fails the build:** unused code · style and type errors · untested changes · functions that
+get too complex · copy-paste · imports that break the architecture · leaked secrets.
 
-The template is for new Python projects. To add the same checks to an existing repository in any
-language, hand your coding agent the
-[CI guardrails playbook](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md):
+**Existing project, or not Python?** Give your coding agent the
+[playbook](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md) instead:
 *Apply https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md to this repository.*
 
-## What a generated project gets
+**Why these checks:**
+[Code entropy: how CI checks keep AI from piling up legacy](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/)
+
+## Use
+
+Requires Docker and [Copier](https://copier.readthedocs.io/en/stable/#installation).
+
+```sh
+copier copy gh:sg4tech/python-guardrails-template my-project
+cd my-project
+git init && git add --all && git commit -m "Start from the guardrails template"
+make install-hooks
+make verify
+```
+
+After generation it's a normal repository; `copier update` is optional and only pulls template
+improvements if you want them. Pull later improvements of the template into the project:
+
+```sh
+copier update
+```
+
+Copier merges the template's changes with yours and marks conflicts like `git merge`.
+
+## Details
+
+What a generated project gets:
 
 - **Layers** `bootstrap → presentation | adapters → application → domain`, held by import-linter
   contracts; every application slice is listed, so a module dropped outside a slice fails.
@@ -37,26 +64,6 @@ language, hand your coding agent the
 - **`AGENTS.md`** stating the rules for coding agents and people alike.
 - **A small notes slice** that exercises every layer, so `make verify` passes right after
   generation; replace it with your own code.
-
-## Use
-
-Requires Docker and [Copier](https://copier.readthedocs.io/en/stable/#installation).
-
-```sh
-copier copy gh:sg4tech/python-guardrails-template my-project
-cd my-project
-git init && git add --all && git commit -m "Start from the guardrails template"
-make install-hooks
-make verify
-```
-
-Pull later improvements of the template into the project:
-
-```sh
-copier update
-```
-
-Copier merges the template's changes with yours and marks conflicts like `git merge`.
 
 ## Developing the template
 
