@@ -5,7 +5,7 @@
 [![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](copier.yml)
 [![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-orange.json)](https://github.com/copier-org/copier)
 
-**Guardrails for AI-generated Python code.**
+**Guardrails for AI-generated Python code.**\
 Instead of asking an agent to follow your conventions, make CI enforce them.
 
 ```sh
