@@ -1,5 +1,10 @@
 # Python guardrails template
 
+[![Template](https://github.com/sg4tech/python-guardrails-template/actions/workflows/template.yml/badge.svg?branch=main)](https://github.com/sg4tech/python-guardrails-template/actions/workflows/template.yml)
+[![License: MIT](https://img.shields.io/github/license/sg4tech/python-guardrails-template)](LICENSE)
+[![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](copier.yml)
+[![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-orange.json)](https://github.com/copier-org/copier)
+
 AI coding agents write code fast and pile up legacy just as fast. This template starts a Python
 project with checks that fail the build when that happens, so the agent has to fix the code
 instead.
