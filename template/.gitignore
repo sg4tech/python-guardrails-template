@@ -5,8 +5,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
-# `uv run` writes a lock file; versions are not pinned, so it stays local.
-uv.lock
 # Editor settings are per person.
 .idea/
 .vscode/
