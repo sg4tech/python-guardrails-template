@@ -56,7 +56,7 @@ What a generated project gets:
 - **One gate:** `make verify` runs every check in Docker; GitHub Actions runs the same.
 - **Checks:** ruff, strict mypy, pytest with branch coverage, complexity and size limits,
   copy-paste, dead code, dependency and vulnerability audit, bandit.
-- **Architecture:** business logic is kept apart from the database, network and CLI, and can't
+- **Architecture (Clean / Hexagonal):** business logic is kept apart from the database, network and CLI, and can't
   import them. Enforced by import-linter and Semgrep:
   - domain and application code do no I/O
   - value objects are frozen, services are stateless
