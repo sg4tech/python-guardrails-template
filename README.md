@@ -8,8 +8,15 @@ instead.
 copier copy gh:sg4tech/python-guardrails-template my-project
 ```
 
-**What fails the build:** unused code · style and type errors · untested changes · functions that
-get too complex · copy-paste · imports that break the architecture · leaked secrets.
+**What fails the build:**
+
+- unused code
+- style and type errors
+- untested changes
+- functions that get too complex
+- copy-paste
+- imports that break the architecture
+- leaked secrets
 
 **Existing project, or not Python?** Give your coding agent the
 [playbook](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md) instead:
