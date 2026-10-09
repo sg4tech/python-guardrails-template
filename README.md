@@ -53,27 +53,19 @@ Copier merges the template's changes with yours and marks conflicts like `git me
 
 What a generated project gets:
 
-- **Layers** `bootstrap → presentation | adapters → application → domain`, held by import-linter
-  contracts; every application slice is listed, so a module dropped outside a slice fails.
-- **Thin command-line handlers** (optional, on by default): each `handle_<command>(args, service,
-  view)` calls one service method and hands its result to the view, with no branching, printing,
-  construction or ambient state; a command-line module without handlers fails too.
-- **Semgrep rules for what imports cannot express**: domain and application code imports only
-  its own code and pure standard modules and does no direct I/O; the wall clock and the
-  environment are read only where composition allows; value objects are frozen, domain services
-  stateless, entities compared by identity; the composition root holds no logic; objects are not
-  built by copying another's fields one by one.
-- **Tests of the rules themselves**: every Semgrep rule is checked against fixtures it must and
-  must not flag, so a rule that silently stops matching fails the build.
-- **Quality gates**: ruff, strict mypy, pytest with branch coverage, bandit, deptry, pip-audit,
-  vulture, cyclomatic and cognitive complexity, annotation complexity, pylint duplication and
-  size limits, a package-size limit, and a mirrored test layout.
-- **A commit-time secret scanner** with a pre-commit hook: tokens, keys, personal paths, local
-  databases and log files.
-- **Docker for every tool**, a `make verify` gate and a GitHub Actions workflow running it.
-- **`AGENTS.md`** stating the rules for coding agents and people alike.
-- **A small notes slice** that exercises every layer, so `make verify` passes right after
-  generation; replace it with your own code.
+- **One gate:** `make verify` runs every check in Docker; GitHub Actions runs the same.
+- **Checks:** ruff, strict mypy, pytest with branch coverage, complexity and size limits,
+  copy-paste, dead code, dependency and vulnerability audit, bandit.
+- **Architecture:** layers `bootstrap → presentation | adapters → application → domain`, enforced
+  by import-linter and Semgrep:
+  - domain and application code do no I/O
+  - value objects are frozen, services are stateless
+  - only `bootstrap/` builds objects
+  - the rules are tested, so a rule that stops working fails the build
+- **Thin CLI handlers** (optional): one service call per command.
+- **Secret scanner** on every commit.
+- **`AGENTS.md`** with the rules for agents and people.
+- **A small example** that passes `make verify`; replace it with your code.
 
 ## Developing the template
 
