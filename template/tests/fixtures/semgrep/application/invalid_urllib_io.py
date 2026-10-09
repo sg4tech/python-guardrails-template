@@ -1,5 +1,5 @@
 """Fixture importing the I/O parts of urllib in an application module."""
-# ruff: noqa: F401, I001
+# ruff: noqa: F401
 
 import urllib.error
 import urllib.request

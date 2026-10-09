@@ -62,10 +62,28 @@ line-length = 100
 extend-exclude = [".runtime"]
 
 [tool.ruff.lint]
+# PLR0917 is a preview rule: without preview it is accepted and silently does nothing. Preview is
+# on only for preview rules named by their full code, so prefix selections stay on stable rules.
+preview = true
+explicit-preview-rules = true
 select = [
   "E", "F", "I", "B", "UP", "N",
   "PTH", "SIM", "C4", "RET", "ERA", "PGH", "TC", "PERF", "FURB", "RSE", "ARG", "A",
   "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLW1510", "BLE001", "SLF001", "PLC0415",
+  # RUF100-RUF104 flag suppression comments that no longer suppress anything.
+  "RUF",
+  # Exception handling: lost tracebacks, try blocks that only re-raise, wrong exception types.
+  "TRY",
+  # Boolean positional arguments make call sites unreadable: f(x, True).
+  "FBT",
+  # mypy strict requires annotations but still accepts an explicit Any.
+  "ANN401",
+]
+ignore = [
+  # A message passed to a custom exception is idiomatic, not a smell.
+  "TRY003",
+  # Moving a return into try/else is a style preference, not a defect.
+  "TRY300",
 ]
 
 [tool.ruff.lint.isort]
