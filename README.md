@@ -19,8 +19,11 @@ copier copy gh:sg4tech/python-guardrails-template my-project
 - leaked secrets
 
 **Existing project, or not Python?** Give your coding agent the
-[playbook](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md) instead:
-*Apply https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md to this repository.*
+[playbook](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md) with this prompt:
+
+```text
+Apply https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/playbook.md to this repository.
+```
 
 **Why these checks:**
 [Code entropy: how CI checks keep AI from piling up legacy](https://sg4.tech/blog/code-entropy-ci-checks-ai-legacy/)
