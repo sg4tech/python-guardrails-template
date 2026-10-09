@@ -97,7 +97,7 @@ known-local-folder = ["tests"]
 "tests/**" = ["PLR0913", "ARG"]
 # Deliberately rule-breaking inputs that the architecture tests expect semgrep to flag; they import
 # modules that do not exist, which the import sorter cannot place.
-"tests/fixtures/semgrep/**" = ["PTH123", "SIM115", "I001"]
+"tests/fixtures/semgrep/**" = ["PTH123", "SIM115", "I001", "ANN401", "FBT001", "RUF036"]
 
 [tool.deptry]
 optional_dependencies_dev_groups = ["dev"]
