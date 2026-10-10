@@ -4,6 +4,9 @@
 [![License: MIT](https://img.shields.io/github/license/sg4tech/python-guardrails-template)](LICENSE)
 [![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](copier.yml)
 [![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-orange.json)](https://github.com/copier-org/copier)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 
 **Guardrails for AI-generated Python code.**\
 Instead of asking an agent to follow your conventions, make CI enforce them.
@@ -58,17 +61,17 @@ Copier merges the template's changes with yours and marks conflicts like `git me
 
 | Job | Tool |
 |---|---|
-| Package manager | uv |
-| Lint and format | ruff |
-| Types | mypy (strict) |
-| Tests and coverage | pytest, coverage with a threshold |
-| Complexity | xenon (cyclomatic), complexipy (cognitive) |
-| Copy-paste | pylint duplicate-code |
-| Dead code | vulture |
-| Dependency hygiene | deptry |
-| Vulnerabilities | pip-audit |
-| Security lint | bandit |
-| Architecture | import-linter, Semgrep |
+| Package manager | [uv](https://github.com/astral-sh/uv) |
+| Lint and format | [ruff](https://github.com/astral-sh/ruff) |
+| Types | [mypy](https://github.com/python/mypy) (strict) |
+| Tests and coverage | [pytest](https://github.com/pytest-dev/pytest), [coverage](https://github.com/coveragepy/coveragepy) with a threshold |
+| Complexity | [xenon](https://github.com/rubik/xenon) (cyclomatic), [complexipy](https://github.com/rohaquinlop/complexipy) (cognitive) |
+| Copy-paste | [pylint](https://github.com/pylint-dev/pylint) duplicate-code |
+| Dead code | [vulture](https://github.com/jendrikseipp/vulture) |
+| Dependency hygiene | [deptry](https://github.com/osprey-oss/deptry) |
+| Vulnerabilities | [pip-audit](https://github.com/pypa/pip-audit) |
+| Security lint | [bandit](https://github.com/PyCQA/bandit) |
+| Architecture | [import-linter](https://github.com/seddonym/import-linter), [Semgrep](https://github.com/semgrep/semgrep) |
 | Secrets | built-in commit-time scanner |
 
 What a generated project gets:
