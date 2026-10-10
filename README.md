@@ -86,7 +86,9 @@ What a generated project gets:
 - **Thin CLI handlers** (optional): one service call per command.
 - **`AGENTS.md`** with the rules for agents and people.
 - **A small example** (notes) that goes through every layer, so `make verify` passes right after
-  generation and an agent has a pattern to copy for new features. Start at `application/notes/`.
+  generation and an agent has a pattern to copy for new features. Start at
+  `src/<your_package>/application/notes/`
+  ([see it in the template](https://github.com/sg4tech/python-guardrails-template/tree/main/template/src/%7B%7B%20package_name%20%7D%7D/application/notes)).
 
 ## Examples
 
