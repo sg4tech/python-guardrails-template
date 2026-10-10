@@ -56,11 +56,24 @@ Copier merges the template's changes with yours and marks conflicts like `git me
 
 ## Details
 
+| Job | Tool |
+|---|---|
+| Package manager | uv |
+| Lint and format | ruff |
+| Types | mypy (strict) |
+| Tests and coverage | pytest, coverage with a threshold |
+| Complexity | xenon (cyclomatic), complexipy (cognitive) |
+| Copy-paste | pylint duplicate-code |
+| Dead code | vulture |
+| Dependency hygiene | deptry |
+| Vulnerabilities | pip-audit |
+| Security lint | bandit |
+| Architecture | import-linter, Semgrep |
+| Secrets | built-in commit-time scanner |
+
 What a generated project gets:
 
 - **One gate:** `make verify` runs every check in Docker; GitHub Actions runs the same.
-- **Checks:** ruff, strict mypy, pytest with branch coverage, complexity and size limits,
-  copy-paste, dead code, dependency and vulnerability audit, bandit.
 - **Architecture (Clean / Hexagonal):** business logic is kept apart from the database, network and CLI, and can't
   import them. Enforced by import-linter and Semgrep:
   - domain and application code do no I/O
@@ -68,9 +81,9 @@ What a generated project gets:
   - only `bootstrap/` builds objects
   - the rules are tested, so a rule that stops working fails the build
 - **Thin CLI handlers** (optional): one service call per command.
-- **Secret scanner** on every commit.
 - **`AGENTS.md`** with the rules for agents and people.
-- **A small example** that passes `make verify`; replace it with your code.
+- **A small example** (notes) that goes through every layer, so `make verify` passes right after
+  generation and an agent has a pattern to copy for new features. Start at `application/notes/`.
 
 ## Examples
 
