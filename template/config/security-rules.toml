@@ -27,7 +27,9 @@ pattern = "-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----"
 [[content_rules]]
 id = "private-path"
 description = "Absolute path into a personal home directory"
-pattern = "(?:/Users|/home)/[A-Za-z0-9._-]+/"
+# The path must start a token (line start, or after a character that cannot sit inside a URL
+# host or path), so a URL whose path merely contains a /home/ or /Users/ segment is not flagged.
+pattern = "(?:^|[^\\w.~%/-])(?:/[^\\s/]+)*?/(?:Users|home)/[A-Za-z0-9._-]+/"
 
 [[content_rules]]
 id = "aws-access-key"
