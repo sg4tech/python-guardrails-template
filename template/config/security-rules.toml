@@ -7,7 +7,8 @@ allow_marker = "secret-scan: allow"
 [[content_rules]]
 id = "api-key"
 description = "API key with an sk- prefix"
-pattern = "sk-[A-Za-z0-9_-]{20,}"
+# The prefix must not continue a word, so a URL slug such as "...-risk-is-the-..." is not flagged.
+pattern = "(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}"
 
 [[content_rules]]
 id = "github-token"
